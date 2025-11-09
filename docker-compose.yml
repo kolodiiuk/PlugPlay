@@ -41,8 +41,6 @@ services:
     restart: unless-stopped
     networks:
       - webnet
-    volumes:
-      - ./backend:/src:cached
 
   frontend:
     build:
@@ -55,9 +53,6 @@ services:
     restart: unless-stopped
     networks:
       - webnet
-    volumes:
-      - ./frontend:/app:cached
-      - /app/node_modules
 
   nginx:
     image: nginx:stable
