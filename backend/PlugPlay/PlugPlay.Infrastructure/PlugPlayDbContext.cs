@@ -54,6 +54,6 @@ public class PlugPlayDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     {
         base.OnConfiguring(optionsBuilder);
 
-        optionsBuilder.UseNpgsql("Server=localhost;Port=5432;Database=plugplay;Username=myuser;Password=mypassword;");
+        optionsBuilder.UseNpgsql("Server=plugplay-db-1;Port=5432;Database=plugplay;Username=myuser;Password=mypassword;");
     }
 }

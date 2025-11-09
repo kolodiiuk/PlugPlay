@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import {storage} from "../utils/StorageService.ts";
 
-export const API_BASE_URL = 'http://localhost:5298'; // port may be different
+export const API_BASE_URL = 'https://plugplay.dev1.dev'; // port may be different
 
 export const baseApi = createApi({
   reducerPath: 'api',
