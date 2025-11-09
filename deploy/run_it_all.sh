@@ -1,5 +1,19 @@
 #/bin/bash
 
+set -e
+
+if [ -z "$1" ]; then
+  echo "Usage: $0 <path_to_configuration_files>"
+  exit 1
+fi
+
+SRC_PATH="$1"
+
+# cp "$SRC_PATH/fullchain.pem" /var/www/plugplay/deploy/certs
+# cp "$SRC_PATH/privkey.pem" /var/www/plugplay/deploy/certs
+# cp "$SRC_PATH/.env" /var/www/plugplay
+# cp "$SRC_PATH/appSettings.json" /var/www/plugplay/backend/PlugPlay/PlugPlay.Api
+
 cd /var/www/plugplay
 docker compose up -d --build
 cd /var/www/plugplay/backend/PlugPlay/PlugPlay.Infrastructure && 
