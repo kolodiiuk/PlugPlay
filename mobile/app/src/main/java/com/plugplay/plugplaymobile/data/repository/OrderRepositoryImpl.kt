@@ -1,5 +1,6 @@
 package com.plugplay.plugplaymobile.data.repository
 
+import com.plugplay.plugplaymobile.data.model.ordering.OrderPlacementResponse
 import com.plugplay.plugplaymobile.data.remote.ShopApiService
 import com.plugplay.plugplaymobile.domain.model.ordering.Order
 import com.plugplay.plugplaymobile.domain.model.ordering.OrderItem
@@ -9,8 +10,13 @@ import javax.inject.Inject
 class OrderRepositoryImpl  @Inject constructor(
     private val apiService: ShopApiService
 ) : OrderRepository {
-    override suspend fun placeOrder(request: String): Result<Unit> {
+
+    override suspend fun placeOrder(request: String): Result<OrderPlacementResponse> {
         TODO("Not yet implemented")
+
+//        return runCatching {
+//            apiService.placeOrder(request)
+//        }
     }
 
     override suspend fun getOrderById(orderId: Int): Result<Order> {
@@ -28,5 +34,4 @@ class OrderRepositoryImpl  @Inject constructor(
     override suspend fun cancelOrder(): Result<Unit> {
         TODO("Not yet implemented")
     }
-
 }

@@ -3,7 +3,6 @@ package com.plugplay.plugplaymobile.presentation.ordering
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.plugplay.plugplaymobile.data.model.ordering.OrderPlacementRequest
-import com.plugplay.plugplaymobile.domain.model.ordering.Order
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import com.plugplay.plugplaymobile.domain.repository.OrderRepository
 import com.plugplay.plugplaymobile.domain.usecase.ordering.PlaceOrderUseCase
@@ -22,8 +21,10 @@ class CheckoutViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<CheckoutResultState>(CheckoutResultState.Idle)
-    val state: StateFlow<CheckoutResultState> = _state.asStateFlow()
+    private val _liqpayHtml = MutableStateFlow<String?>(null)
 
+    val liqpayHtml: StateFlow<String?> = _liqpayHtml
+    val state: StateFlow<CheckoutResultState> = _state.asStateFlow()
     val isLoggedIn: StateFlow<Boolean> = authRepository.getAuthStatus()
         .stateIn(
             scope = viewModelScope,
@@ -42,6 +43,30 @@ class CheckoutViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.value = CheckoutResultState.Error(error.message ?: "Помилка оформлення замовлення.")
                 }
+        }
+    }
+
+    fun startCheckout(request: OrderPlacementRequest) {
+        viewModelScope.launch {
+            val payload = placeOrderUseCase.invoke(request)
+            val data = payload.getOrNull()
+            val signature = payload.getOrNull()
+            if (data == null || signature == null) {
+                _state.value = CheckoutResultState.Error("Не вдалося ініціювати оплату.")
+                return@launch
+            }
+
+            val html = """
+                <html>
+                <body onload="document.forms[0].submit()">
+                <form method="POST" action="https://www.liqpay.ua/api/3/checkout">
+                    <input type="hidden" name="data" value="$data" />
+                    <input type="hidden" name="signature" value="$signature" />
+                </form>
+                </body>
+                </html>
+            """.trimIndent()
+            _liqpayHtml.value = html
         }
     }
 

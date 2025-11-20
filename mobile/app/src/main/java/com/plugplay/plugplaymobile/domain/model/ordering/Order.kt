@@ -1,45 +1,18 @@
 package com.plugplay.plugplaymobile.domain.model.ordering
 
 data class Order(
-    val id: Int
+    val id: Int,
+    val userId: Int?,
+    val orderDate: java.time.Instant,
+    val status: OrderStatus,
+    val totalAmount: Double,
+    val deliveryMethod: DeliveryMethod,
+    val paymentMethod: PaymentMethod,
+    val deliveryAddressId: Int?,
+    val paymentStatus: PaymentStatus,
+    val transactionId: Long,
+    val paymentCreated: java.time.Instant?,
+    val paymentProcessed: java.time.Instant?,
+    val paymentFailureReason: String?,
+    val updatedAt: java.time.Instant
 )
-
-/*
-using PlugPlay.Domain.Enums;
-
-namespace PlugPlay.Domain.Entities;
-
-public class Order
-{
-    public int Id { get; set; }
-
-    public int? UserId { get; set; }
-
-    public DateTime OrderDate { get; set; }
-
-    public OrderStatus Status { get; set; }
-
-    public decimal TotalAmount { get; set; }
-
-    public decimal? DiscountAmount { get; set; }
-
-    public DeliveryMethod DeliveryMethod { get; set; }
-
-    public PaymentMethod PaymentMethod { get; set; }
-
-    public int? DeliveryAddressId { get; set; }
-
-    public PaymentStatus PaymentStatus { get; set; }
-
-    public long TransactionId { get; set; }
-
-    public DateTime? PaymentCreated { get; set; }
-
-    public DateTime? PaymentProcessed { get; set; }
-
-    public string PaymentFailureReason { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
-}
-
- */
