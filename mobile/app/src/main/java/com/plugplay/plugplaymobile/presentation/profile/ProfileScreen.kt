@@ -91,12 +91,11 @@ class ProfileViewModel @Inject constructor(
         lastName: String,
         phoneNumber: String,
         email: String,
-        currentPassword: String? = null,
-        newPassword: String? = null
+        addresses: List<com.plugplay.plugplaymobile.data.model.UserAddressDto> = emptyList()
     ) {
         _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
         viewModelScope.launch {
-            updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword)
+            updateProfileUseCase(firstName, lastName, phoneNumber, email, emptyList())
                 .onSuccess { updatedProfile ->
                     _state.update {
                         it.copy(
@@ -225,8 +224,7 @@ fun ProfileScreen(
                 lastName = lastName.value,
                 phoneNumber = phone.value,
                 email = email.value,
-                currentPassword = currentPass,
-                newPassword = newPass
+                addresses = emptyList()
             )
         }
     }

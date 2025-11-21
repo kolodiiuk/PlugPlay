@@ -27,7 +27,7 @@ interface ShopApiService {
     suspend fun getProfile(@Path("id") userId: String): Response<ProfileResponse>
 
     @PUT("api/UserInfo/{id}")
-    suspend fun updateProfile(@Path("id") userId: String, @Body request: UpdateProfileRequest): Response<ProfileResponse>
+    suspend fun updateProfile(@Path("id") userId: Int, @Body request: UpdateProfileRequest): Response<ProfileResponse>
 
     @GET("api/Products/{id}")
     suspend fun getProductById(@Path("id") itemId: String): Response<ProductDto>

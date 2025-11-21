@@ -1,5 +1,6 @@
 package com.plugplay.plugplaymobile.domain.repository
 
+import com.plugplay.plugplaymobile.data.model.UserAddressDto
 import com.plugplay.plugplaymobile.domain.model.AuthData
 import com.plugplay.plugplaymobile.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
@@ -8,8 +9,7 @@ interface AuthRepository {
 
     suspend fun login(email: String, password: String): Result<AuthData>
 
-    // [ВИПРАВЛЕНО] Реєстрація більше не повертає AuthData
-    suspend fun register(firstName: String, lastName: String, phoneNumber: String, email: String, password: String): Result<Unit> // <-- ЗМІНЕНО ТУТ
+    suspend fun register(firstName: String, lastName: String, phoneNumber: String, email: String, password: String): Result<Unit>
 
     suspend fun saveAuthData(authData: AuthData)
 
@@ -24,7 +24,6 @@ interface AuthRepository {
         lastName: String,
         phoneNumber: String,
         email: String,
-        currentPassword: String? = null,
-        newPassword: String? = null
+        addresses: List<UserAddressDto> = emptyList(),
     ): Result<UserProfile>
 }
