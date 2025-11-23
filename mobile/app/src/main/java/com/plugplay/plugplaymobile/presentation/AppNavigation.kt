@@ -33,7 +33,6 @@ fun AppNavigation(
         startDestination = Routes.PRODUCT_LIST,
         modifier = modifier
     ) {
-        // ... (composable для PRODUCT_LIST, PROFILE залишаються без змін)
         composable(Routes.PRODUCT_LIST) {
             ProductListScreen(
                 onNavigateToProfile = {
@@ -58,11 +57,9 @@ fun AppNavigation(
             )
         }
 
-        // Екран Входу
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // Після успішного входу повертаємося на екран Профілю
                     navController.navigate(Routes.PROFILE) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                         launchSingleTop = true
@@ -74,20 +71,15 @@ fun AppNavigation(
             )
         }
 
-        // Екран Реєстрації
         composable(Routes.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // [ВИПРАВЛЕНО] Після успішної реєстрації ведемо на екран ЛОГІНУ
                     navController.navigate(Routes.LOGIN) {
-                        // Видаляємо екран реєстрації з бекстеку
                         popUpTo(Routes.REGISTER) { inclusive = true }
                         launchSingleTop = true
                     }
-                    // TODO: Тут можна додати SnackBar "Реєстрація успішна! Увійдіть."
                 },
                 onNavigateToLogin = {
-                    // Повертаємося на екран входу
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.REGISTER) { inclusive = true }
                         launchSingleTop = true
@@ -96,7 +88,6 @@ fun AppNavigation(
             )
         }
 
-        // ... (composable для ITEM_DETAIL залишається без змін)
         composable(
             route = Routes.ITEM_DETAIL,
             arguments = listOf(
@@ -109,7 +100,6 @@ fun AppNavigation(
 
             if (itemId != null) {
                 ItemDetailScreen(
-                    itemId = itemId,
                     navController = navController
                 )
             } else {
