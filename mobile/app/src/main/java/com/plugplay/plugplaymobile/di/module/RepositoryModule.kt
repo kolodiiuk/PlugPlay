@@ -2,8 +2,10 @@ package com.plugplay.plugplaymobile.di.module
 
 import com.plugplay.plugplaymobile.data.repository.MockAuthRepositoryImpl
 import com.plugplay.plugplaymobile.data.repository.AuthRepositoryImpl
+import com.plugplay.plugplaymobile.data.repository.OrderRepositoryImpl
 import com.plugplay.plugplaymobile.data.repository.ProductRepositoryImpl
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
+import com.plugplay.plugplaymobile.domain.repository.OrderRepository
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import dagger.Binds
 import dagger.Module
@@ -35,4 +37,12 @@ abstract class RepositoryModule {
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
+}
+    */
+
+    @Binds
+    @Singleton
+    abstract fun bindOrderRepository(
+        orderRepositoryImpl: OrderRepositoryImpl
+    ): OrderRepository
 }

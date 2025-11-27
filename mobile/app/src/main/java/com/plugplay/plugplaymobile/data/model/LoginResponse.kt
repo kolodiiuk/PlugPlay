@@ -6,8 +6,10 @@ import com.plugplay.plugplaymobile.domain.model.UserProfile
 import com.plugplay.plugplaymobile.data.model.UserDto // Додаємо імпорт UserDto
 
 data class LoginResponse(
-    val token: String,
-    val user: UserDto
+    @SerializedName("token") val token: String,
+    @SerializedName("refreshToken") val refreshToken: String? = null,
+    @SerializedName("expiration") val expiration: String? = null,
+    @SerializedName("user") val user: UserDto
 )
 
 data class ProfileResponse(
