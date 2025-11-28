@@ -1,6 +1,5 @@
 package com.plugplay.plugplaymobile.di.module
 
-// [НОВИЙ ІМПОРТ] Імпортуємо мокову реалізацію
 import com.plugplay.plugplaymobile.data.repository.MockAuthRepositoryImpl
 import com.plugplay.plugplaymobile.data.repository.AuthRepositoryImpl
 import com.plugplay.plugplaymobile.data.repository.OrderRepositoryImpl
@@ -21,24 +20,24 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindProductRepository(
-        // Тут залишаємо реальний репозиторій, бо список товарів працює
         productRepositoryImpl: ProductRepositoryImpl
     ): ProductRepository
 
-    @Binds
-    @Singleton
-    abstract fun bindAuthRepository(
-        // [ВИПРАВЛЕНО] Вказуємо мокову реалізацію
-        mockAuthRepositoryImpl: MockAuthRepositoryImpl
-    ): AuthRepository
+//    @Binds
+//    @Singleton
+//    abstract fun bindAuthRepository(
+//        // [ВИПРАВЛЕНО] Вказуємо мокову реалізацію
+//        mockAuthRepositoryImpl: MockAuthRepositoryImpl
+//    ): AuthRepository
 
-    /*
+
     // [ВИМКНЕНО] Поки що вимикаємо реальну реалізацію
     @Binds
     @Singleton
     abstract fun bindAuthRepository(
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
+}
     */
 
     @Binds

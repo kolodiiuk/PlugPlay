@@ -12,9 +12,8 @@ class UpdateProfileUseCase @Inject constructor(
         lastName: String,
         phoneNumber: String,
         email: String,
-        currentPassword: String? = null,
-        newPassword: String? = null
+        addresses: List<com.plugplay.plugplaymobile.data.model.UserAddressDto> = emptyList()
     ): Result<UserProfile> {
-        return repository.updateProfile(firstName, lastName, phoneNumber, email, currentPassword, newPassword)
+        return repository.updateProfile(firstName, lastName, phoneNumber, email, addresses)
     }
 }

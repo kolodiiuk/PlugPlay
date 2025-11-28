@@ -21,12 +21,20 @@ data class ProfileResponse(
 )
 
 data class UpdateProfileRequest(
+    val id: Int,
     val firstName: String,
     val lastName: String,
     val phoneNumber: String,
     val email: String,
-    val currentPassword: String? = null,
-    val newPassword: String? = null,
+    val addresses: List<UserAddressDto>
+)
+
+data class UserAddressDto (
+    val id: Int,
+    val house: String?,
+    val apartments: String?,
+    val street: String?,
+    val city: String?
 )
 
 fun LoginResponse.toAuthData(): AuthData {
