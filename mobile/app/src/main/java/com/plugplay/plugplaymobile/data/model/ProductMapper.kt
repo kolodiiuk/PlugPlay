@@ -2,64 +2,39 @@ package com.plugplay.plugplaymobile.data.model
 
 import com.plugplay.plugplaymobile.domain.model.Item
 import com.plugplay.plugplaymobile.domain.model.Product
-
-// Default placeholder for missing images
-private const val PLACEHOLDER_URL = "https://example.com/placeholder.jpg"
+import java.util.Locale
+import java.text.NumberFormat
 
 fun ProductDto.toDomain(): Product {
+    val firstImage = this.pictureUrls?.firstOrNull()
+        ?: "https://res.cloudinary.com/dovmlupww/image/upload/v1761867319/Gemini_Generated_Image_3vl0793vl0793vl0_ly2vhd.png"
 
-    // [ОНОВЛЕНО] Використовуємо нове поле pictureUrls
-    val firstImage = this.pictureUrls?.firstOrNull() ?: PLACEHOLDER_URL
+    val priceText = this.price ?: 0.0
+    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("uk", "UA"))
 
     return Product(
         id = this.id.toString(),
         title = this.name ?: "Без назви",
-        priceValue = String.format("%.2f ₴", this.price ?: 0.0),
+        priceValue = String.format("%.2f ₴", priceText),
         image = firstImage
     )
 }
 
+fun List<ProductDto>.toDomainList(): List<Product> = this.map { it.toDomain() }
 
-fun List<ProductDto>.toDomainList(): List<Product> {
-    return this.map { it.toDomain() }
-}
-
-
-/**
- * Маппер DTO -> Item (для екрану ДЕТАЛЕЙ)
- */
 fun ProductDto.toDomainItem(): Item {
-
-    // 1. Обчислення рейтингу та кількості відгуків
-    val validReviews = this.reviews.orEmpty().filter { it.rating in 1..5 }
-    val reviewCount = validReviews.size
-    val averageRating = if (reviewCount > 0) {
-        validReviews.map { it.rating.toDouble() }.average()
-    } else {
-        0.0
-    }
-
-    // [ОНОВЛЕНО] Використовуємо нове поле pictureUrls
-    val imageUrls = this.pictureUrls
-        .orEmpty()
-        .filter { it.isNotBlank() }
-        .ifEmpty { listOf(PLACEHOLDER_URL) }
-
+    val pictures = this.pictureUrls ?: emptyList()
     return Item(
-        id = this.id.toString(),
+        id = this.id,
         name = this.name ?: "Без назви",
         description = this.description ?: "Опис відсутній.",
         price = this.price ?: 0.0,
-        imageUrls = imageUrls, // ВИКОРИСТОВУЄМО СПИСОК URL
-        isAvailable = (this.stockQuantity ?: 0) > 0,
-
-        // У JSON немає "brand", тому беремо назву категорії
-        brand = this.category?.name ?: "N/A",
-
-        category = this.category?.name ?: "N/A",
-
-        // [ДОДАНО] Поля для рейтингу
-        averageRating = averageRating,
-        reviewCount = reviewCount
+        stockQuantity = this.stockQuantity ?: 0,
+        createdAt = this.createdAt,
+        category = this.category,
+        pictureUrls = pictures,
+        reviews = this.reviews ?: emptyList(),
+        attributes = this.attributes ?: emptyList(),
+        productAttributeDtos = this.productAttributeDtos ?: emptyList()
     )
 }

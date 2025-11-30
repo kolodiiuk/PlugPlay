@@ -33,37 +33,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.plugplay.plugplaymobile.R // Потрібен для R.drawable...
+import com.plugplay.plugplaymobile.R
 import com.plugplay.plugplaymobile.domain.model.Product
 import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
 import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
 import java.util.Locale
-
-// --- ДАНІ-ЗАГЛУШКИ ДЛЯ ДИЗАЙНУ ---
-
-// Заглушка для іконок категорій
-data class CategoryItem(val name: String, val icon: Int) // Використовуйте R.drawable.ic_...
-val categoryItems = listOf(
-    CategoryItem("Смартфони", R.drawable.ic_launcher_foreground), // TODO: Замініть на реальні іконки
-    CategoryItem("Навушники", R.drawable.ic_launcher_foreground),
-    CategoryItem("Ноутбуки", R.drawable.ic_launcher_foreground),
-    CategoryItem("Годинники", R.drawable.ic_launcher_foreground),
-    CategoryItem("Камери", R.drawable.ic_launcher_foreground),
-)
-
-// --- ОСНОВНИЙ ЕКРАН ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductListScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToItemDetail: (itemId: String) -> Unit,
-    onNavigateToCheckout: () -> Unit, // [НОВИЙ АРГУМЕНТ]
+    onNavigateToCheckout: () -> Unit,
     viewModel: ProductListViewModel = hiltViewModel(),
-    cartViewModel: CartViewModel = hiltViewModel() // [НОВИЙ VIEWMODEL]
+    cartViewModel: CartViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val cartState by cartViewModel.state.collectAsState() // [CART STATE]
+    val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
 
     // Стан для відображення діалогу кошика
@@ -81,7 +67,6 @@ fun ProductListScreen(
 
     Scaffold(
         topBar = {
-            // [ОНОВЛЕНО TopAppBar]
             TopAppBar(
                 title = {
                     Text(
@@ -95,7 +80,6 @@ fun ProductListScreen(
                         Icon(Icons.Outlined.Search, contentDescription = "Пошук")
                     }
 
-                    // [ДОДАНО] Іконка профілю
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Outlined.Person, contentDescription = "Профіль")
                     }
@@ -120,10 +104,8 @@ fun ProductListScreen(
                 }
             )
         },
-        // [ВИДАЛЕНО] bottomBar
     ) { padding ->
 
-        // Обробка станів (Завантаження, Помилка)
         when (state) {
             is ProductListState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize().padding(padding).wrapContentSize(Alignment.Center)) {
@@ -136,20 +118,16 @@ fun ProductListScreen(
                 }
             }
             is ProductListState.Success -> {
-                // [НОВИЙ МАКЕТ] Використовуємо LazyVerticalGrid
                 ProductGrid(
                     products = (state as ProductListState.Success).products,
                     modifier = Modifier.padding(padding),
                     onItemClick = onNavigateToItemDetail
                 )
             }
-            ProductListState.Idle -> { /* Нічого */ }
+            ProductListState.Idle -> {}
         }
     }
 }
-
-// --- НОВІ КОМПОНЕНТИ ДИЗАЙНУ ---
-// (Весь код нижче залишається без змін)
 
 @Composable
 fun ProductGrid(
@@ -158,36 +136,14 @@ fun ProductGrid(
     onItemClick: (itemId: String) -> Unit
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2), // 2 колонки
+        columns = GridCells.Fixed(2),
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 1. БАНЕР (на всю ширину) - ВИДАЛЕНО
-        /*
-        item(span = { GridItemSpan(2) }) {
-            BannerCard(modifier = Modifier.padding(vertical = 8.dp))
-        }
-        */
 
-        // 2. ЗАГОЛОВОК КАТЕГОРІЙ (на всю ширину)
-        item(span = { GridItemSpan(2) }) {
-            SectionHeader(title = "Тебе зацікавить")
-        }
-
-        // 3. РЯДОК КАТЕГОРІЙ (на всю ширину)
-        item(span = { GridItemSpan(2) }) {
-            CategoryLazyRow(modifier = Modifier.padding(vertical = 8.dp))
-        }
-
-        // 4. ЗАГОЛОВОК "ДЛЯ ТЕБЕ" (на всю ширину)
-        item(span = { GridItemSpan(2) }) {
-            SectionHeader(title = "Для тебе", showFilter = true)
-        }
-
-        // 5. СПИСОК ТОВАРІВ
         items(products) { product ->
             ProductItem(
                 product = product,
@@ -216,16 +172,12 @@ fun ProductItem(
                     .height(180.dp)
             ) {
                 AsyncImage(
-                    model = product.image, // <--- URL-адреса з моделі
+                    model = product.image,
                     contentDescription = product.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    // Використовуємо заглушку на випадок помилки Coil
                     error = painterResource(id = R.drawable.ic_launcher_foreground)
                 )
-
-
-
                 IconButton(
                     onClick = { /* TODO: Add to favorites */ },
                     modifier = Modifier
@@ -258,117 +210,27 @@ fun ProductItem(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-
+//                reviews
+//                Spacer(Modifier.height(8.dp))
+//                Row(verticalAlignment = Alignment.CenterVertically) {
+//                    Icon(
+//                        Icons.Filled.Star,
+//                        contentDescription = "Рейтинг",
+//                        tint = Color(0xFFFFC107),
+//                        modifier = Modifier.size(16.dp)
+//                    )
+//                    Spacer(Modifier.width(4.dp))
+//                    Text(
+//                        text = "4.8",
+//                        style = MaterialTheme.typography.bodySmall,
+//                        fontWeight = FontWeight.Bold
+//                    )
+//                    Text(
+//                        text = " (156)",
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = Color.Gray
+//                    )
                 }
             }
         }
     }
-
-
-@Composable
-fun BannerCard(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(180.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF512DA8))
-    ) {
-        Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            Column(
-                modifier = Modifier.align(Alignment.CenterStart),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Світло в кожну домівку",
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "генератори, павербанки,\nзарядні станції",
-                    color = Color.White.copy(alpha = 0.8f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = { /*TODO*/ },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-                ) {
-                    Text("Почати продавати", color = Color.Black)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SectionHeader(
-    title: String,
-    showFilter: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        if (showFilter) {
-            TextButton(onClick = { /* TODO: Фільтри */ }) {
-                Text("Фільтри")
-            }
-        }
-    }
-}
-
-@Composable
-fun CategoryLazyRow(modifier: Modifier = Modifier) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp)
-    ) {
-        items(categoryItems) { item ->
-            CategoryIconItem(item)
-        }
-    }
-}
-
-@Composable
-fun CategoryIconItem(item: CategoryItem) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .padding(12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = item.icon),
-                contentDescription = item.name,
-                modifier = Modifier.fillMaxSize(),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = item.name,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}

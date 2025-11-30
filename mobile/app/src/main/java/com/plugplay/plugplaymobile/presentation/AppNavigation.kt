@@ -20,7 +20,7 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val ITEM_DETAIL = "detail_list/{itemId}"
-    const val CHECKOUT = "checkout" // <-- НОВИЙ МАРШРУТ
+    const val CHECKOUT = "checkout"
 }
 
 fun createItemDetailRoute(itemId: String) = "detail_list/$itemId"
@@ -35,7 +35,6 @@ fun AppNavigation(
         startDestination = Routes.PRODUCT_LIST,
         modifier = modifier
     ) {
-        // Product List Screen
         composable(Routes.PRODUCT_LIST) {
             ProductListScreen(
                 onNavigateToProfile = {
@@ -46,13 +45,12 @@ fun AppNavigation(
                 onNavigateToItemDetail = { itemId ->
                     navController.navigate(createItemDetailRoute(itemId))
                 },
-                onNavigateToCheckout = { // [НОВИЙ КОЛБЕК]
+                onNavigateToCheckout = {
                     navController.navigate(Routes.CHECKOUT)
                 }
             )
         }
 
-        // Profile Screen (без змін)
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onNavigateToCatalog = {
@@ -64,10 +62,10 @@ fun AppNavigation(
             )
         }
 
-        // Login Screen (без змін)
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
+                    // Після успішного входу повертаємося на екран Профілю
                     navController.navigate(Routes.PROFILE) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                         launchSingleTop = true
@@ -79,7 +77,6 @@ fun AppNavigation(
             )
         }
 
-        // Register Screen (без змін)
         composable(Routes.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
@@ -97,7 +94,6 @@ fun AppNavigation(
             )
         }
 
-        // Item Detail Screen
         composable(
             route = Routes.ITEM_DETAIL,
             arguments = listOf(
@@ -110,9 +106,8 @@ fun AppNavigation(
 
             if (itemId != null) {
                 ItemDetailScreen(
-                    itemId = itemId,
                     navController = navController,
-                    onNavigateToCheckout = { // [НОВИЙ КОЛБЕК]
+                    onNavigateToCheckout = {
                         navController.navigate(Routes.CHECKOUT)
                     }
                 )

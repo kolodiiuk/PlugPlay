@@ -97,8 +97,7 @@ class AuthRepositoryImpl @Inject constructor(
         lastName: String,
         phoneNumber: String,
         email: String,
-        currentPassword: String?,
-        newPassword: String?
+        addresses: List<UserAddressDto>
     ): Result<UserProfile> {
         val userId = localDataSource.userId.first()
         if (userId == null) {
@@ -108,12 +107,12 @@ class AuthRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val request = UpdateProfileRequest(
+                    id = userId,
                     firstName = firstName,
                     lastName = lastName,
                     phoneNumber = phoneNumber,
                     email = email,
-                    currentPassword = currentPassword,
-                    newPassword = newPassword
+                    addresses = emptyList()
                 )
                 val response = apiService.updateProfile(userId, request)
                 if (response.isSuccessful && response.body() != null) {

@@ -6,11 +6,12 @@ import com.plugplay.plugplaymobile.domain.model.UserProfile
 import com.plugplay.plugplaymobile.data.model.UserDto // Додаємо імпорт UserDto
 
 data class LoginResponse(
-    val token: String,
-    val user: UserDto
+    @SerializedName("token") val token: String,
+    @SerializedName("refreshToken") val refreshToken: String? = null,
+    @SerializedName("expiration") val expiration: String? = null,
+    @SerializedName("user") val user: UserDto
 )
 
-// DTO для отримання профілю
 data class ProfileResponse(
     val id: Int,
     @SerializedName("firstName") val firstName: String,
@@ -19,25 +20,30 @@ data class ProfileResponse(
     @SerializedName("phoneNumber") val phoneNumber: String
 )
 
-// Запит на оновлення профілю
 data class UpdateProfileRequest(
+    val id: Int,
     val firstName: String,
     val lastName: String,
     val phoneNumber: String,
     val email: String,
-    val currentPassword: String? = null,
-    val newPassword: String? = null,
+    val addresses: List<UserAddressDto>
 )
 
-// Маппер LoginResponse -> AuthData
+data class UserAddressDto (
+    val id: Int,
+    val house: String?,
+    val apartments: String?,
+    val street: String?,
+    val city: String?
+)
+
 fun LoginResponse.toAuthData(): AuthData {
     return AuthData(
         token = this.token,
-        userId = this.user.id // ВИПРАВЛЕНО: UserDto.id вже Int, якщо UserDto було правильно оголошено
+        userId = this.user.id
     )
 }
 
-// Маппер ProfileResponse -> UserProfile
 fun ProfileResponse.toDomain(): UserProfile {
     return UserProfile(
         id = this.id.toString(),
