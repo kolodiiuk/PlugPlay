@@ -20,12 +20,16 @@ export default function Header({ onCategorySelect }: HeaderProps) {
   const reduxSearchQuery = useAppSelector((state) => state.filter?.searchQuery || '');
   const [searchQuery, setSearchQueryLocal] = useState(reduxSearchQuery);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+  const [ignoreReduxSync, setIgnoreReduxSync] = useState(false);
 
   const { openCart, closeCart } = useCartContext();
 
   // Sync local state with Redux state
   useEffect(() => {
-    setSearchQueryLocal(reduxSearchQuery);
+    // setSearchQueryLocal(reduxSearchQuery);
+    if (!ignoreReduxSync) {
+      setSearchQueryLocal(reduxSearchQuery);
+    }
   }, [reduxSearchQuery]);
 
   const handleSignOut = async () => {
@@ -37,14 +41,24 @@ export default function Header({ onCategorySelect }: HeaderProps) {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+
+    setIgnoreReduxSync(true);
+
     dispatch(setSearchQuery(searchQuery.trim()));
     onCategorySelect(null);
+    // navigate('/');
+    setSearchQueryLocal('');
     navigate('/');
+    setTimeout(() => setIgnoreReduxSync(false), 300);
   };
 
   const handleCategorySelect = (categoryId: number | null) => {
     onCategorySelect(categoryId);
     navigate('/');
+  };
+
+  const handleLogoBtnClick = () => {
+    handleCategorySelect(2147483647);
   };
 
   return (
@@ -64,7 +78,7 @@ export default function Header({ onCategorySelect }: HeaderProps) {
               onClose={() => setIsCategoriesOpen(false)}
               onCategorySelect={handleCategorySelect}
             />
-            <Link to="/" onClick={() => handleCategorySelect(null)} className="flex items-center gap-2">
+            <Link to="/" onClick={handleLogoBtnClick} className="flex items-center gap-2">
               <img src={logoUrl} alt="Plug&Play logo" className="h-8 w-8" />
               <span className="text-2xl font-bold text-black">Plug&Play</span>
             </Link>
