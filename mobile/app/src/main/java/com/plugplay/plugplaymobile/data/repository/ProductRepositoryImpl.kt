@@ -23,10 +23,10 @@ class ProductRepositoryImpl @Inject constructor(
     }
 
     // [ОНОВЛЕНО] Конвертуємо String ID в Int для виклику API
-    override suspend fun getProductById(itemId: String): Result<Item> {
+    override suspend fun getProductById(itemId: Int): Result<Item> {
         return runCatching {
             // API вимагає Int ID, тому парсимо String
-            val itemIdInt = itemId.toIntOrNull() ?: throw IllegalArgumentException("Invalid product ID format. Expected integer, got $itemId")
+            val itemIdInt = itemId ?: throw IllegalArgumentException("Invalid product ID format. Expected integer, got $itemId")
 
             val response = apiService.getProductById(itemIdInt)
             if (response.isSuccessful && response.body() != null) {

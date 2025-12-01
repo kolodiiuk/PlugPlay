@@ -9,12 +9,11 @@ import com.plugplay.plugplaymobile.domain.usecase.ClearCartUseCase
 import com.plugplay.plugplaymobile.domain.usecase.DeleteCartItemUseCase
 import com.plugplay.plugplaymobile.domain.usecase.GetCartItemsUseCase
 import com.plugplay.plugplaymobile.domain.usecase.UpdateCartItemQuantityUseCase
-import com.plugplay.plugplaymobile.presentation.auth.AuthViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -39,21 +38,22 @@ class CartViewModel @Inject constructor(
 
     private val _loadingState = MutableStateFlow(false)
 
-    // Получаем ID пользователя из AuthRepository
     private val userIdFlow = authRepository.getUserId()
         .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
 
-    // Комбинируем поток товаров в корзине с состоянием загрузки
+    private val cartItemsFlow = userIdFlow.flatMapLatest { userId ->
+        getCartItemsUseCase(userId)
+    }
+
     val state: StateFlow<CartState> = combine(
-        userIdFlow,
-        getCartItemsUseCase(null),
-        _loadingState // <--- [ВИПРАВЛЕННЯ] Включаємо потік _loadingState сюди
-    ) { userId, items, isMutating -> // <--- [ВИПРАВЛЕННЯ] Отримуємо нове значення isMutating
+        cartItemsFlow,
+        _loadingState
+    ) { items, isMutating ->
         val subtotal = items.sumOf { it.total }
         CartState(
             cartItems = items.sortedBy { it.id },
             subtotal = subtotal,
-            isLoading = isMutating, // <--- [ВИПРАВЛЕННЯ] Використовуємо реактивне значення isMutating
+            isLoading = isMutating,
             error = null
         )
     }.stateIn(
@@ -62,7 +62,7 @@ class CartViewModel @Inject constructor(
         CartState(isLoading = false)
     )
 
-    fun addToCart(productId: String, quantity: Int) {
+    fun addToCart(productId: Int, quantity: Int) {
         viewModelScope.launch {
             _loadingState.update { true }
             addToCartUseCase(userIdFlow.value, productId, quantity)
@@ -73,7 +73,7 @@ class CartViewModel @Inject constructor(
         }
     }
 
-    fun updateQuantity(cartItemId: Long, newQuantity: Int) {
+    fun updateQuantity(cartItemId: Int, newQuantity: Int) {
         if (newQuantity < 1) return
         viewModelScope.launch {
             _loadingState.update { true }
@@ -85,7 +85,7 @@ class CartViewModel @Inject constructor(
         }
     }
 
-    fun deleteItem(cartItemId: Long) {
+    fun deleteItem(cartItemId: Int) {
         viewModelScope.launch {
             _loadingState.update { true }
             deleteCartItemUseCase(userIdFlow.value, cartItemId)

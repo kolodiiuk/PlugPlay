@@ -8,5 +8,5 @@ interface ProductRepository {
     suspend fun getProducts(): Result<List<Product>>
 
     // Функція для отримання одного товару за ID (використовує модель Item)
-    suspend fun getProductById(itemId: String): Result<Item>
+    suspend fun getProductById(itemId: Int): Result<Item>
 }

@@ -3,46 +3,33 @@ package com.plugplay.plugplaymobile.data.model
 import com.google.gson.annotations.SerializedName
 
 /**
- * DTO для POST /api/Cart (додавання товару)
+ * DTOs aligned with backend CartController contracts.
  */
 data class CreateCartItemDto(
-    val productId: Int, // OpenAPI: integer, int32
-    val userId: Int,    // OpenAPI: integer, int32
-    val quantity: Int   // OpenAPI: integer, int32
-)
-
-/**
- * DTO для PUT /api/Cart/quantity (оновлення кількості)
- */
-data class UpdateCartItemQuantityDto(
-    val cartItemId: Int, // OpenAPI: integer, int32
-    val newQuantity: Int // OpenAPI: integer, int32
-)
-
-/**
- * DTO для одного елемента кошика, повертається API GET /api/Cart/{userId}
- * Назви полів імітують наявність необхідних даних для мапінгу в CartItem Domain Model.
- */
-data class CartItemDto(
-    @SerializedName("id")
-    val id: Int, // ID запису в кошику (cartItemId)
-
-    @SerializedName("productId")
+    @SerializedName("ProductId")
     val productId: Int,
+    @SerializedName("UserId")
+    val userId: Int,
+    @SerializedName("Quantity")
+    val quantity: Int
+)
 
-    @SerializedName("quantity")
+data class UpdateCartItemQuantityDto(
+    @SerializedName("CartItemId")
+    val cartItemId: Int,
+    @SerializedName("NewQuantity")
+    val newQuantity: Int
+)
+
+data class CartItemDto(
+    @SerializedName("Id")
+    val id: Int,
+    @SerializedName("ProductId")
+    val productId: Int,
+    @SerializedName("Quantity")
     val quantity: Int,
-
-    @SerializedName("total")
+    @SerializedName("Total")
     val total: Double,
-
-    // Імітація вкладених деталей, необхідних для CartItem Domain Model
-    @SerializedName("productName")
-    val productName: String?,
-
-    @SerializedName("unitPrice")
-    val unitPrice: Double?,
-
-    @SerializedName("productImage")
-    val productImage: String?
+    @SerializedName("UserId")
+    val userId: Int
 )

@@ -8,29 +8,14 @@ import com.plugplay.plugplaymobile.data.remote.ShopApiService
 import com.plugplay.plugplaymobile.domain.model.CartItem
 import com.plugplay.plugplaymobile.domain.repository.CartRepository
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.lang.Exception
-
-// Helper extension function to map DTO to Domain model
-fun CartItemDto.toDomain(): CartItem {
-    val price = this.unitPrice ?: 0.0
-    val imgUrl = this.productImage ?: "https://example.com/placeholder.jpg"
-
-    return CartItem(
-        id = this.id.toLong(),
-        productId = this.productId.toString(), // Domain model uses String ID
-        name = this.productName ?: "Без назви",
-        imageUrl = imgUrl,
-        unitPrice = price,
-        quantity = this.quantity,
-        total = this.total
-    )
-}
 
 @Singleton
 class CartRepositoryImpl @Inject constructor(
@@ -40,69 +25,80 @@ class CartRepositoryImpl @Inject constructor(
 ) : CartRepository {
 
     override fun getCartItems(userId: Int?): Flow<List<CartItem>> {
-        // Завжди повертаємо Flow з локального сховища, оскільки воно є єдиним джерелом стану для UI.
-        // Оновлення цього сховища відбувається в мутуючих методах (addToCart, delete, update)
-        // через виклик API + refreshLocalCart.
-        return localDataSource.guestCart
-    }
-
-    override suspend fun addToCart(userId: Int?, productId: String, quantity: Int): Result<Unit> = withContext(Dispatchers.IO) {
-        if (userId != null) {
-            // [API] Логіка для зареєстрованого користувача
-            runCatching {
-                val request = CreateCartItemDto(
-                    productId = productId.toInt(),
-                    userId = userId,
-                    quantity = quantity
-                )
-                val response = apiService.addToCart(request)
-                if (!response.isSuccessful) {
-                    throw Exception("Failed to add to cart via API: ${response.message()}")
-                }
-                // Оновлюємо локальний кеш даними з API, щоб UI оновився
+        return if (userId != null && userId > 0) {
+            flow {
                 refreshLocalCart(userId)
-                Unit
+                emitAll(localDataSource.guestCart)
             }
         } else {
-            // [LOCAL] Логіка для гостя (має бути схожа на фронтенд)
-            runCatching {
-                val product = productRepository.getProductById(productId).getOrThrow()
-                val cart = localDataSource.value.toMutableList()
-                val existingItem = cart.find { it.productId == productId }
-
-                if (existingItem != null) {
-                    val newQuantity = existingItem.quantity + quantity
-                    val updatedItem = existingItem.copy(
-                        quantity = newQuantity,
-                        total = newQuantity * product.price
-                    )
-                    cart[cart.indexOf(existingItem)] = updatedItem
-                } else {
-                    val newCartItem = CartItem(
-                        id = localDataSource.getNextId(),
-                        productId = product.id,
-                        name = product.name,
-                        imageUrl = product.imageUrls[0],
-                        unitPrice = product.price,
-                        quantity = quantity,
-                        total = product.price * quantity
-                    )
-                    cart.add(newCartItem)
-                }
-                localDataSource.saveGuestCart(cart)
-                Unit
-            }
+            localDataSource.guestCart
         }
     }
 
-    override suspend fun updateQuantity(userId: Int?, cartItemId: Long, newQuantity: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun addToCart(userId: Int?, productId: Int, quantity: Int): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            if (userId != null) {
+                if (userId < 1) {
+                    return@withContext Result.failure(IllegalArgumentException("Invalid user id"))
+                }
+                runCatching {
+                    val request = CreateCartItemDto(
+                        productId = productId,
+                        userId = userId,
+                        quantity = quantity
+                    )
+                    val response = apiService.addToCart(request)
+                    if (!response.isSuccessful) {
+                        throw Exception("Failed to add to cart via API: ${response.message()}")
+                    }
+                    refreshLocalCart(userId)
+                    Unit
+                }
+            } else {
+                runCatching {
+                    val product = productRepository.getProductById(productId).getOrThrow()
+                    val cart = localDataSource.value.toMutableList()
+                    val existingItem = cart.find { it.productId == productId }
+
+                    if (existingItem != null) {
+                        val newQuantity = existingItem.quantity + quantity
+                        val updatedItem = existingItem.copy(
+                            quantity = newQuantity,
+                            total = newQuantity * product.price
+                        )
+                        cart[cart.indexOf(existingItem)] = updatedItem
+                    } else {
+                        val newCartItem = CartItem(
+                            id = localDataSource.getNextId().toInt(),
+                            productId = product.id,
+                            name = product.name,
+                            imageUrl = product.imageUrl,
+                            unitPrice = product.price,
+                            quantity = quantity,
+                            total = product.price * quantity
+                        )
+                        cart.add(newCartItem)
+                    }
+                    localDataSource.saveGuestCart(cart)
+                    Unit
+                }
+            }
+        }
+
+    override suspend fun updateQuantity(
+        userId: Int?,
+        cartItemId: Int,
+        newQuantity: Int
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         if (newQuantity < 1) return@withContext Result.success(Unit)
 
         if (userId != null) {
-            // [API] Логіка для зареєстрованого користувача
+            if (userId < 1) {
+                return@withContext Result.failure(IllegalArgumentException("Invalid user id"))
+            }
             runCatching {
                 val request = UpdateCartItemQuantityDto(
-                    cartItemId = cartItemId.toInt(), // Cart ID має бути Int
+                    cartItemId = cartItemId,
                     newQuantity = newQuantity
                 )
                 val response = apiService.updateQuantity(request)
@@ -113,57 +109,59 @@ class CartRepositoryImpl @Inject constructor(
                 Unit
             }
         } else {
-            // [LOCAL] Логіка для гостя
             runCatching {
                 val cart = localDataSource.value.toMutableList()
-                val item = cart.find { it.id == cartItemId } ?: throw Exception("Cart item not found")
+                val item =
+                    cart.find { it.id == cartItemId } ?: throw Exception("Cart item not found")
 
-                item.copy(
+                val updatedItem = item.copy(
                     quantity = newQuantity,
                     total = newQuantity * item.unitPrice
-                ).also { updatedItem ->
-                    cart[cart.indexOf(item)] = updatedItem
-                }
+                )
+                cart[cart.indexOf(item)] = updatedItem
                 localDataSource.saveGuestCart(cart)
                 Unit
             }
         }
     }
 
-    override suspend fun deleteCartItem(userId: Int?, cartItemId: Long): Result<Unit> = withContext(Dispatchers.IO) {
-        if (userId != null) {
-            // [API] Логіка для зареєстрованого користувача
-            runCatching {
-                val response = apiService.deleteCartItem(cartItemId.toInt()) // Cart ID має бути Int
-                if (!response.isSuccessful) {
-                    throw Exception("Failed to delete cart item via API: ${response.message()}")
+    override suspend fun deleteCartItem(userId: Int?, cartItemId: Int): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            if (userId != null) {
+                if (userId < 1) {
+                    return@withContext Result.failure(IllegalArgumentException("Invalid user id"))
                 }
-                refreshLocalCart(userId)
-                Unit
-            }
-        } else {
-            // [LOCAL] Логіка для гостя
-            runCatching {
-                val updatedCart = localDataSource.value.filter { it.id != cartItemId }
-                localDataSource.saveGuestCart(updatedCart)
-                Unit
+                runCatching {
+                    val response = apiService.deleteCartItem(cartItemId)
+                    if (!response.isSuccessful) {
+                        throw Exception("Failed to delete cart item via API: ${response.message()}")
+                    }
+                    refreshLocalCart(userId)
+                    Unit
+                }
+            } else {
+                runCatching {
+                    val updatedCart = localDataSource.value.filter { it.id != cartItemId }
+                    localDataSource.saveGuestCart(updatedCart)
+                    Unit
+                }
             }
         }
-    }
 
     override suspend fun clearCart(userId: Int?): Result<Unit> = withContext(Dispatchers.IO) {
         if (userId != null) {
-            // [API] Логіка для зареєстрованого користувача
+            if (userId < 1) {
+                return@withContext Result.failure(IllegalArgumentException("Invalid user id"))
+            }
             runCatching {
                 val response = apiService.clearCart(userId)
                 if (!response.isSuccessful) {
                     throw Exception("Failed to clear cart via API: ${response.message()}")
                 }
-                localDataSource.clearGuestCart() // Очищуємо локальний кеш теж
+                localDataSource.clearGuestCart()
                 Unit
             }
         } else {
-            // [LOCAL] Логіка для гостя
             runCatching {
                 localDataSource.clearGuestCart()
                 Unit
@@ -171,19 +169,61 @@ class CartRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * Helper для оновлення локального кешу після успішного API-виклику.
-     */
     private suspend fun refreshLocalCart(userId: Int) {
+        if (userId < 1) return
         try {
-            apiService.getCartItems(userId)
-                .body()
-                ?.map { it.toDomain() }
-                ?.let { newCartItems ->
-                    localDataSource.saveGuestCart(newCartItems)
-                }
+            val response = apiService.getCartItems(userId)
+            if (!response.isSuccessful) {
+                println("ERROR: Failed to fetch cart for user $userId: ${response.code()} ${response.message()}")
+                return
+            }
+            val remoteItems = response.body().orEmpty()
+            val mappedItems = mapRemoteCartItems(remoteItems)
+            localDataSource.saveGuestCart(mappedItems)
         } catch (e: Exception) {
             println("ERROR: Failed to refresh local cart after API mutation: ${e.message}")
         }
+    }
+
+    private suspend fun mapRemoteCartItems(remoteItems: List<CartItemDto>): List<CartItem> {
+        return remoteItems.map { dto ->
+            val productResult = productRepository.getProductById(dto.productId)
+            if (productResult.isFailure) {
+                println("WARN: Unable to fetch product ${dto.productId}: ${productResult.exceptionOrNull()?.message}")
+            }
+            val product = productResult.getOrNull()
+            dto.toDomain(
+                name = product?.name ?: "Product #${dto.productId}",
+                imageUrl = product?.imageUrl ?: DEFAULT_IMAGE_URL,
+                unitPrice = product?.price ?: safeUnitPrice(dto.total, dto.quantity),
+                totalOverride = dto.total
+            )
+        }
+    }
+
+    private fun CartItemDto.toDomain(
+        name: String,
+        imageUrl: String,
+        unitPrice: Double,
+        totalOverride: Double
+    ): CartItem {
+        val resolvedTotal = if (totalOverride <= 0.0) unitPrice * quantity else totalOverride
+        return CartItem(
+            id = id,
+            productId = productId,
+            name = name,
+            imageUrl = imageUrl,
+            unitPrice = unitPrice,
+            quantity = quantity,
+            total = resolvedTotal
+        )
+    }
+
+    private fun safeUnitPrice(total: Double, quantity: Int): Double {
+        return if (quantity <= 0) 0.0 else total / quantity
+    }
+
+    companion object {
+        private const val DEFAULT_IMAGE_URL = "https://example.com/placeholder.jpg"
     }
 }

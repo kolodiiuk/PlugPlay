@@ -30,14 +30,14 @@ class ItemDetailViewModel @Inject constructor(
 
     // Отримуємо itemId, який був переданий через NavHost
     // Використовуємо .get<String>("itemId") замість checkNotNull, оскільки це більш типово для Compose
-    private val itemId: String = savedStateHandle.get<String>("itemId") ?: ""
+    private val itemId: Int = savedStateHandle.get<String>("itemId")?.toInt() ?: 0
 
     private val _state = MutableStateFlow(ItemDetailState())
     val state: StateFlow<ItemDetailState> = _state
 
     init {
         // Завантажуємо дані одразу при створенні ViewModel, тільки якщо itemId не пустий
-        if (itemId.isNotEmpty()) {
+        if (itemId != 0) {
             loadItemDetails()
         } else {
             _state.update { it.copy(isLoading = false, error = "ID товару не знайдено.") }

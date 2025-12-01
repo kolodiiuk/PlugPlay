@@ -122,7 +122,6 @@ class ProfileViewModel @Inject constructor(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -397,7 +396,6 @@ fun ProfileScreen(
                 }
 
 
-
                 // 2. Contacts
                 item {
                     ExpandableSection(
@@ -417,13 +415,21 @@ fun ProfileScreen(
                         ) {
                             // Phone display (not editable)
                             Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(phone.value.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+                            Text(
+                                phone.value.ifBlank { "—" },
+                                fontSize = 15.sp,
+                                color = Color.DarkGray
+                            )
 
                             Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
 
                             // Email display (not editable)
                             Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(email.value.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+                            Text(
+                                email.value.ifBlank { "—" },
+                                fontSize = 15.sp,
+                                color = Color.DarkGray
+                            )
                         }
                     }
                 }
@@ -473,10 +479,6 @@ fun ProfileScreen(
                             openSection.value =
                                 if (openSection.value == "Edit Credentials") "" else "Edit Credentials"
                         }
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "My Account") "" else "My Account"
-                        }
                     ) {
                         Column(
                             modifier = Modifier
@@ -505,112 +507,11 @@ fun ProfileScreen(
                         }
                     }
                 }
-
-
-                // 2. Contacts
-                item {
-                    ExpandableSection(
-                        title = "Contacts",
-                        subtitle = "Email addresses and phone numbers",
-                        isExpanded = openSection.value == "Contacts",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "Contacts") "" else "Contacts"
-                        }
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            // Phone display (not editable)
-                            Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(phone.value.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
-
-                            Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
-
-                            // Email display (not editable)
-                            Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(email.value.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
-                        }
-                    }
-                }
-
-
-                // 3. Delivery Addresses (Виправлено)
-                item {
-                    ExpandableSection(
-                        title = "Delivery Addresses",
-                        subtitle = "Saved delivery addresses",
-                        isExpanded = openSection.value == "Delivery Addresses",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "Delivery Addresses") "" else "Delivery Addresses"
-                        }
-                    ) {
-                        // НОВА СЕКЦІЯ: Форма додавання адреси
-                        AddAddressForm()
-                    }
-                }
-                // 4. My Orders (Заглушка)
-                item {
-                    ExpandableSection(
-                        title = "My orders",
-                        subtitle = "Your order history",
-                        isExpanded = openSection.value == "My Orders",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "My Orders") "" else "My Orders"
-                        }
-                    ) {
-                        Text(
-                            text = "Тут буде історія ваших замовлень.",
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                }
-                // 5. Edit Credentials
-                item {
-                    ExpandableSection(
-                        title = "Edit Credentials",
-                        subtitle = "Edit account information", // Описание стало проще
-                        isExpanded = openSection.value == "Edit Credentials",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "Edit Credentials") "" else "Edit Credentials"
-                        }
-                    ) {
-                        // Контент для "My Account" (ваша стара логіка)
-                        MyAccountSection(
-                            firstName = firstName,
-                            lastName = lastName,
-                            phone = phone,
-                            email = email,
-                            currentPassword = currentPassword,
-                            newPassword = newPassword,
-                            confirmNewPassword = confirmNewPassword,
-                            passwordsMatch = passwordsMatch.value,
-                            error = profileState.error,
-                            onLogoutClick = { authViewModel.logout() }
-                        )
-                    }
-                }
-
-                // ... і т.д. для інших секцій (Delivery Addresses...)
-
-                // --- Соціальні мережі ---
-                item {
-                    Spacer(Modifier.height(24.dp))
-                    SocialAccountsCard()
-                    Spacer(Modifier.height(24.dp)) // Додатковий відступ
-                }
             }
         }
     }
 }
 
-// --- НОВИЙ КОМПОНЕНТ ФОРМИ АДРЕСИ (згідно скріншоту) ---
 @Composable
 fun AddAddressForm() {
     // Стан для полів
@@ -699,7 +600,6 @@ fun AddAddressForm() {
         }
     }
 }
-
 
 // --- [НОВЫЙ КОМПОНЕНТ ДЛЯ КНОПОК] ---
 @Composable
@@ -965,95 +865,6 @@ fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
                 .height(50.dp)
         ) {
             Text("Увійти / Зареєструватися")
-        }
-    }
-}
-
-@Composable
-fun AddAddressForm() {
-    // Стан для полів
-    val city = remember { mutableStateOf("") }
-    val street = remember { mutableStateOf("") }
-    val house = remember { mutableStateOf("") }
-    val apartment = remember { mutableStateOf("") }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .background(Color.White)
-    ) {
-        // Заголовок
-        Text(
-            "Add New Address",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        // Рядок 1: City & Street
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = city.value,
-                onValueChange = { city.value = it },
-                label = { Text("City") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            OutlinedTextField(
-                value = street.value,
-                onValueChange = { street.value = it },
-                label = { Text("Street") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // Рядок 2: House & Apartment
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = house.value,
-                onValueChange = { house.value = it },
-                label = { Text("House") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            OutlinedTextField(
-                value = apartment.value,
-                onValueChange = { apartment.value = it },
-                label = { Text("Apartment (optional)") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        // Кнопка "Add Address"
-        OutlinedButton(
-            onClick = { /* TODO: Implement saving address */ },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary,
-                containerColor = Color.Transparent
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Add Address", fontWeight = FontWeight.SemiBold)
         }
     }
 }
