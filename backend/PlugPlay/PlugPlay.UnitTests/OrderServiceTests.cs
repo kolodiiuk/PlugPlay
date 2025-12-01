@@ -58,47 +58,6 @@ public class OrderServiceTests
         Assert.Empty(await _context.Orders.ToListAsync());
     }
 
-    /// <summary>
-    /// Fails with in memory database -- it doesn't support transactions
-    /// </summary>
-    // [Fact]
-    // public async Task PlaceOrderAsync_ProductNotFound_ThrowsExceptionAndReturnsFailure()
-    // {
-    //     // Arrange
-    //     var request = new PlaceOrderRequest
-    //     {
-    //         UserId = 1,
-    //         PaymentMethod = PaymentMethod.Cash,
-    //         DeliveryMethod = DeliveryMethod.Pickup,
-    //         DeliveryAddressId = 1,
-    //         OrderItems = new List<OrderItemDto>
-    //         {
-    //             new OrderItemDto { ProductId = 10, Quantity = 2 }
-    //         }
-    //     };
-    //     var user = new User
-    //     {
-    //         Id = 1,
-    //         Email = "user1@example.com",
-    //         FirstName = "John",
-    //         LastName = "Doe",
-    //         PhoneNumber = "1234567890"
-    //     };
-    //     _context.Users.Add(user);
-    //     var address = new UserAddress { Id = 1, UserId = 1 };
-    //     _context.UserAddresses.Add(address);
-    //     await _context.SaveChangesAsync();
-    //
-    //     // Act
-    //     var result = await _service.PlaceOrderAsync(request);
-    //
-    //     // Assert
-    //     Assert.True(result.Failure);
-    //     Assert.Contains("One of product is not available: Product not found: 10", result.Error);
-    //     // Note: In-memory DB does not support transactions, so rollback assertions are removed
-    //     Assert.Empty(await _context.Orders.ToListAsync());
-    // }
-
     [Fact]
     public async Task PlaceOrderAsync_SuccessfulWithoutCardPayment()
     {
@@ -199,54 +158,6 @@ public class OrderServiceTests
         Assert.Equal(98, (await _context.Products.FindAsync(product.Id))?.StockQuantity);
         _mockPaymentService.Verify(p => p.CreatePayment(It.IsAny<int>(), 200), Times.Once);
     }
-
-    /// <summary>
-    /// Fails with in memory database -- it doesn't support transactions
-    /// </summary>
-    // [Fact]
-    // public async Task PlaceOrderAsync_PaymentFails_RollsBackAndReturnsFailure()
-    // {
-    //     // Arrange
-    //     var request = new PlaceOrderRequest
-    //     {
-    //         UserId = 1,
-    //         PaymentMethod = PaymentMethod.Card,
-    //         DeliveryMethod = DeliveryMethod.Courier,
-    //         DeliveryAddressId = 1,
-    //         OrderItems = new List<OrderItemDto>
-    //         {
-    //             new OrderItemDto { ProductId = 10, Quantity = 2 }
-    //         }
-    //     };
-    //     var user = new User
-    //     {
-    //         Id = 1,
-    //         Email = "user1@example.com",
-    //         FirstName = "John",
-    //         LastName = "Doe",
-    //         PhoneNumber = "1234567890"
-    //     };
-    //     _context.Users.Add(user);
-    //     var address = new UserAddress { Id = 1, UserId = 1 };
-    //     _context.UserAddresses.Add(address);
-    //     var product = new Product { Id = 10, Price = 50, Name = "name", StockQuantity = 100 };
-    //     _context.Products.Add(product);
-    //     await _context.SaveChangesAsync();
-    //     _mockPaymentService.Setup(p => p.CreatePayment(It.IsAny<int>(), It.IsAny<decimal>()))
-    //         .ReturnsAsync(Result.Fail<LiqPayPaymentData>("Payment error"));
-    //
-    //     // Act
-    //     var result = await _service.PlaceOrderAsync(request);
-    //
-    //     // Assert
-    //     Assert.True(result.Failure);
-    //     Assert.Contains("Payment error", result.Error);
-    //     Assert.Equal(100, (await _context.Products.FindAsync(product.Id))?.StockQuantity);
-    //
-    //     Assert.Empty(await _context.Orders.ToListAsync()); // Rolled back
-    //     Assert.Empty(await _context.OrderItems.ToListAsync()); // Rolled back
-    //     _mockPaymentService.Verify(p => p.CreatePayment(It.IsAny<int>(), It.IsAny<decimal>()), Times.Once);
-    // }
 
     [Theory]
     [InlineData(DeliveryMethod.Courier, 100, 200)] // 100 + 100
