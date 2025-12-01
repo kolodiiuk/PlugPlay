@@ -28,19 +28,16 @@ export default function SignIn() {
 
     if (!email || !password) {
       setError('All fields are required');
-
       return;
     }
 
     if (!validateEmail(email)) {
       setError('Please enter a valid email address');
-
       return;
     }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
-
       return;
     }
 
@@ -55,8 +52,8 @@ export default function SignIn() {
       setPassword('');
 
       setTimeout(() => {
-        navigate('/');
-      }, 1200);
+        navigate('/profile');
+      }, 100);
     } catch (err: any) {
       const msg =
         err?.data?.message ||
@@ -72,6 +69,7 @@ export default function SignIn() {
       const user = await handleGoogleSuccess(credentialResponse);
       if (user) {
         setUser(user);
+        setTimeout(() => navigate('/profile'), 50);
       }
     } catch (e) {
       console.error('Google sign-in handling failed', e);
