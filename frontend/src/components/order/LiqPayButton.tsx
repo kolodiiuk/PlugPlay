@@ -18,6 +18,9 @@ const LiqPayButton = (props: LiqPayButtonProps) => {
   }
 
   const {userId, deliveryAddressId, orderItems, deliveryMethod} = props.request;
+  if (orderItems.length === 0) {
+    return null;
+  }
 
   const handlePayment = async () => {
     setLoading(true);
@@ -58,6 +61,8 @@ const LiqPayButton = (props: LiqPayButtonProps) => {
 
       form.appendChild(dataInput);
       form.appendChild(signatureInput);
+      window.open('/profile', '_blank');
+      form.target = '_self';
       document.body.appendChild(form);
       form.submit();
     } catch (err) {
