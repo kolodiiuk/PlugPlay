@@ -385,14 +385,14 @@ fun InfoSection() {
             .background(Color.White)
             .padding(16.dp)
     ) {
-        Text("Доставка и гарантія", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Доставка та гарантія", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
 
-        InfoRow(Icons.Outlined.LocalShipping, "Быстрая доставка", "Відправка в день замовлення")
+        InfoRow(Icons.Outlined.LocalShipping, "Швидка доставка", "Відправка в день замовлення")
         Divider(Modifier.padding(vertical = 8.dp))
         InfoRow(Icons.Outlined.Shield, "Гарантія 2 роки", "Офіційна гарантія від виробника")
         Divider(Modifier.padding(vertical = 8.dp))
-        InfoRow(Icons.Outlined.Replay, "Возврат 14 дней", "Возможность вернуть товар")
+        InfoRow(Icons.Outlined.Replay, "Повернення 14 днів", "Можливість повернути товар")
     }
 }
 
