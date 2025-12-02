@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 
-
 namespace PlugPlay.UnitTests;
 
 public class ProductServiceTests
@@ -26,9 +25,6 @@ public class ProductServiceTests
         _service = new ProductsService(_context, _mockLogger.Object);
     }
 
-    // ---------------------------------------------------------
-    // FILTER PRODUCTS (sort only)
-    // ---------------------------------------------------------
     [Fact]
     public async Task FilterProductsAsync_SortsByPriceAscending_WhenNoOrderProvided()
     {
@@ -44,7 +40,7 @@ public class ProductServiceTests
         {
             Predicate = null,
             Includes = null,
-            OrderBy = null,        // Should default to p => p.Price asc
+            OrderBy = null,
             SkipCount = 0,
             TakeCount = 25
         };
@@ -85,10 +81,6 @@ public class ProductServiceTests
         Assert.Equal(new[] { 1, 3, 2 }, list.Select(x => x.Id).ToArray());
     }
 
-    // ---------------------------------------------------------
-    // SEARCH PRODUCTS
-    // ---------------------------------------------------------
-
     [Fact]
     public async Task SearchProductsAsync_EmptyQuery_ReturnsAllProductsPaged()
     {
@@ -112,7 +104,7 @@ public class ProductServiceTests
         // Assert
         Assert.False(result.Failure);
         Assert.Equal(10, result.Value.Count());
-        Assert.Equal(11, result.Value.First().Id); // page 2 → skip first 10
+        Assert.Equal(11, result.Value.First().Id);
     }
 
     [Fact]
@@ -128,7 +120,7 @@ public class ProductServiceTests
         var req = new ProductSearchRequest
         {
             Query = "",
-            Page = 0,       // Should clamp to 1
+            Page = 0,
             PageSize = 10
         };
 
