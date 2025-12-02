@@ -1,5 +1,12 @@
 package com.plugplay.plugplaymobile.presentation.auth
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -24,7 +34,15 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.activity.result.IntentSenderRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.auth.api.identity.SignInClient
+import com.google.android.gms.auth.api.identity.BeginSignInRequest
+import com.google.android.gms.common.api.ApiException
 import com.plugplay.plugplaymobile.R
+
+
+private const val WEB_CLIENT_ID = "YOUR_WEB_CLIENT_ID"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,9 +52,53 @@ fun LoginScreen(
     onNavigateBack: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val oneTapClient: SignInClient = remember { Identity.getSignInClient(context) }
+
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
     val passwordVisible = remember { mutableStateOf(false) }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            try {
+                val credential = oneTapClient.getSignInCredentialFromIntent(result.data)
+                val idToken = credential.googleIdToken
+                if (idToken != null) {
+                    viewModel.signInWithGoogle(idToken)
+                } else {
+                    // Обробка, якщо токен не отримано
+                }
+            } catch (e: ApiException) {
+                // Обробка помилки отримання токена
+            }
+        }
+    }
+
+    fun startGoogleSignIn() {
+        val signInRequest = BeginSignInRequest.builder()
+            .setGoogleIdTokenRequestOptions(
+                BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
+                    .setSupported(true)
+                    .setServerClientId(WEB_CLIENT_ID)
+                    .setFilterByAuthorizedAccounts(false)
+                    .build()
+            )
+            .setAutoSelectEnabled(false)
+            .build()
+
+        oneTapClient.beginSignIn(signInRequest)
+            .addOnSuccessListener { result ->
+                googleSignInLauncher.launch(
+                    IntentSenderRequest.Builder(result.pendingIntent.intentSender).build()
+                )
+            }
+            .addOnFailureListener { e ->
+                // Обробка, якщо One Tap не підтримується
+            }
+    }
 
     val state by viewModel.state.collectAsState()
 
@@ -82,7 +144,8 @@ fun LoginScreen(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -150,7 +213,11 @@ fun LoginScreen(
                         }
                     }
 
-                    // --- ВИДАЛЕНО: OrDivider() та GoogleSignInButton ---
+                    OrDivider()
+
+                    GoogleSignInButton {
+                        startGoogleSignIn()
+                    }
                 }
             }
 
@@ -160,6 +227,7 @@ fun LoginScreen(
         }
     }
 }
+
 
 @Composable
 private fun ClickableRegisterText(onClick: () -> Unit) {
@@ -178,6 +246,30 @@ private fun ClickableRegisterText(onClick: () -> Unit) {
         text = annotatedText,
         onClick = { offset ->
             annotatedText.getStringAnnotations(tag = "SignUp", start = offset, end = offset)
+                .firstOrNull()?.let {
+                    onClick()
+                }
+        }
+    )
+}
+
+@Composable
+private fun ClickableLoginText(onClick: () -> Unit) {
+    val annotatedText = buildAnnotatedString {
+        withStyle(style = SpanStyle(color = Color.Gray)) {
+            append("Already have an account? ")
+        }
+        pushStringAnnotation(tag = "SignIn", annotation = "SignIn")
+        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
+            append("Sign In")
+        }
+        pop()
+    }
+
+    ClickableText(
+        text = annotatedText,
+        onClick = { offset ->
+            annotatedText.getStringAnnotations(tag = "SignIn", start = offset, end = offset)
                 .firstOrNull()?.let {
                     onClick()
                 }

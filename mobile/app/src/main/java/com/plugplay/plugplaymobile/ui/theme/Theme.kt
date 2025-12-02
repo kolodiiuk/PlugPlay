@@ -12,6 +12,16 @@ private val PlugPlayBlue = Color(0xFF1E88E5) // Средний, яркий го�
 private val PlugPlayLightBlue = Color(0xFF64B5F6) // Светлый голубой
 private val PlugPlayDarkBlue = Color(0xFF005CBF) // Темный голубой
 
+private val DarkColorScheme = darkColorScheme(
+    primary = PlugPlayBlue, // Голубой для кнопок/акцентов
+    onPrimary = Color.Black, // Черный текст на голубом
+    secondary = PlugPlayLightBlue,
+    tertiary = PlugPlayDarkBlue,
+    background = Color(0xFF121212), // Темный фон
+    surface = Color(0xFF1E1E1E), // Темная поверхность карточек
+    onBackground = Color.White, // Белый текст на темном фоне
+    onSurface = Color.White, // Белый текст на темной поверхности
+)
 
 private val LightColorScheme = lightColorScheme(
     primary = PlugPlayBlue, // Голубой для кнопок/акцентов
@@ -32,11 +42,13 @@ private val LightColorScheme = lightColorScheme(
 fun PlugPlayMobileTheme(
     darkTheme: Boolean = false,
     // Динамические цвета Material 3 (пока не используем)
-    dynamicColor: Boolean = false,
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = LightColorScheme
-
+    val colorScheme = when {
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
 
     MaterialTheme(
         colorScheme = colorScheme,

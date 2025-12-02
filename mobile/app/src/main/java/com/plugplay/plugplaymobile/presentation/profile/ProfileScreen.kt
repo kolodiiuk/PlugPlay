@@ -337,7 +337,7 @@ fun ProfileScreen(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Logout", fontWeight = FontWeight.SemiBold)
+                        Text("Вийти з акаунту", fontWeight = FontWeight.SemiBold)
                     }
                     Spacer(Modifier.height(32.dp))
                 }
