@@ -8,29 +8,27 @@ using PlugPlay.Domain.Extensions;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
 using PlugPlay.Services.Payment;
-using Serilog;
 
 namespace PlugPlay.Services.Ordering;
 
-public class OrderService : IOrderService
+public class OrderService : BaseService<OrderService>, IOrderService
 {
     private static readonly EventId GetOrderByIdEvent = new(2006, nameof(GetOrderAsync));
 
-    private readonly PlugPlayDbContext _context;
+    private static readonly EventId ClearCartEvent = new(2007, "ClearCart");
+
+    private static readonly EventId RefundPaymentSuccessEvent = new(2008, "RefundPaymentSuccess");
+
+    private static readonly EventId RefundPaymentFailureEvent = new(2009, "RefundPaymentFailure");
 
     private readonly IPaymentService _paymentService;
-
     private readonly ICartService _cartService;
 
-    private readonly ILogger<OrderService> _logger;
-
     public OrderService(PlugPlayDbContext context, IPaymentService paymentService, ICartService cartService,
-        ILogger<OrderService> logger)
+        ILogger<OrderService> logger) : base(context, logger)
     {
-        _context = context;
         _paymentService = paymentService;
         _cartService = cartService;
-        _logger = logger;
     }
 
     public async Task<Result<OrderResponse>> PlaceOrderAsync(PlaceOrderRequest orderReq)
@@ -39,14 +37,14 @@ public class OrderService : IOrderService
 
         try
         {
-            var user = await _context.Users.FindAsync(orderReq.UserId);
+            var user = await Context.Users.FindAsync(orderReq.UserId);
             if (user == null)
             {
                 return Result.Fail<OrderResponse>(
                     $"No user {orderReq.UserId} specified in order request");
             }
 
-            var address = await _context.UserAddresses.FindAsync(orderReq.DeliveryAddressId);
+            var address = await Context.UserAddresses.FindAsync(orderReq.DeliveryAddressId);
             if (address == null)
             {
                 return Result.Fail<OrderResponse>(
@@ -66,13 +64,13 @@ public class OrderService : IOrderService
                 OrderItems = new List<OrderItem>()
             };
 
-            _context.Orders.Add(newOrder);
-            await _context.SaveChangesAsync();
+            Context.Orders.Add(newOrder);
+            await Context.SaveChangesAsync();
 
             var items = await CreateOrderItems(orderReq.OrderItems, newOrder.Id);
             newOrder.OrderItems = items;
             newOrder.TotalAmount = items.Sum(i => i.Quantity * i.UnitPrice);
-            await _context.SaveChangesAsync();
+            await Context.SaveChangesAsync();
 
             var totalWithDelivery = CalcTotalWithDelivery(newOrder.TotalAmount, orderReq.DeliveryMethod);
             if (orderReq.PaymentMethod == PaymentMethod.Card)
@@ -95,7 +93,7 @@ public class OrderService : IOrderService
                 newOrder.TotalAmount = totalWithDelivery;
             }
 
-            await _context.SaveChangesAsync();
+            await Context.SaveChangesAsync();
             await ClearCart();
             scope.Complete();
 
@@ -136,7 +134,7 @@ public class OrderService : IOrderService
             var cartRes = await _cartService.ClearCartAsync(orderReq.UserId);
             if (cartRes.Failure)
             {
-                _logger.LogWarning("Couldn't clear cart {cartRes.Error}", cartRes.Error);
+                Log(LogLevel.Warning, ClearCartEvent, "Couldn't clear cart. Error: {error}", cartRes.Error);
             }
         }
     }
@@ -145,13 +143,13 @@ public class OrderService : IOrderService
     {
         try
         {
-            var user = await _context.Users.FindAsync(userId);
+            var user = await Context.Users.FindAsync(userId);
             if (user is null)
             {
                 return Result.Fail<IEnumerable<Order>>($"No user with id {userId}");
             }
 
-            var orders = await _context.Orders
+            var orders = await Context.Orders
                 .Where(o => o.UserId == userId)
                 .Include(o => o.User)
                 .Include(o => o.DeliveryAddress)
@@ -181,7 +179,7 @@ public class OrderService : IOrderService
     {
         try
         {
-            var order = await _context.Orders
+            var order = await Context.Orders
                 .Include(o => o.User)
                 .Include(o => o.DeliveryAddress)
                 .Include(o => o.OrderItems)
@@ -199,11 +197,7 @@ public class OrderService : IOrderService
 
             if (order == null)
             {
-                var warnOrderNotFound = LoggerMessage.Define<int>(
-                    LogLevel.Warning,
-                    GetOrderByIdEvent,
-                    "Order with ID {orderId} not found.");
-                warnOrderNotFound(_logger, orderId, null);
+                Log(LogLevel.Warning, GetOrderByIdEvent, "Order with ID {orderId} not found.", orderId);
 
                 return Result.Fail<Order>($"Order with ID {orderId} not found.");
             }
@@ -221,7 +215,7 @@ public class OrderService : IOrderService
     {
         try
         {
-            var order = await _context.Orders.FindAsync(orderId);
+            var order = await Context.Orders.FindAsync(orderId);
             if (order is null)
             {
                 return Result.Fail<LiqPayRefundResponse>($"No order with id {orderId}");
@@ -239,8 +233,10 @@ public class OrderService : IOrderService
                                                               order.PaymentStatus == PaymentStatus.Paid))
             {
                 result = await _paymentService.RefundPayment(orderId);
-                result.OnSuccess(() => Log.Information("Success refunding payment"))
-                    .OnFailure(() => Log.Error(result.Error));
+                result.OnSuccess(() =>
+                        Log(LogLevel.Information, RefundPaymentSuccessEvent, "Success refunding payment"))
+                    .OnFailure(() =>
+                        Log(LogLevel.Error, RefundPaymentFailureEvent, "Refund failed: {error}", result.Error));
 
                 if (result.Value.Result == "error")
                 {
@@ -249,8 +245,8 @@ public class OrderService : IOrderService
             }
 
             order.Status = OrderStatus.Cancelled;
-            _context.Orders.Update(order);
-            await _context.SaveChangesAsync();
+            Context.Orders.Update(order);
+            await Context.SaveChangesAsync();
 
             return result.Failure
                 ? Result.Fail<LiqPayRefundResponse>($"Payment refund failed. Reason: {result.Error}")
@@ -266,13 +262,13 @@ public class OrderService : IOrderService
     {
         try
         {
-            var order = await _context.Orders.FindAsync(orderId);
+            var order = await Context.Orders.FindAsync(orderId);
             if (order == null)
             {
                 return Result.Fail<IEnumerable<OrderItem>>($"No order with id {orderId}");
             }
 
-            var items = await _context.OrderItems
+            var items = await Context.OrderItems
                 .Where(oi => oi.OrderId == orderId)
                 .Include(oi => oi.Product)
                 .ThenInclude(p => p.ProductAttributes)
@@ -297,7 +293,7 @@ public class OrderService : IOrderService
 
         foreach (var dto in orderItemDtos)
         {
-            var product = await _context.Products.FindAsync(dto.ProductId);
+            var product = await Context.Products.FindAsync(dto.ProductId);
             if (product == null)
             {
                 throw new InvalidOperationException($"Product not found: {dto.ProductId}");
@@ -324,12 +320,12 @@ public class OrderService : IOrderService
             };
             product.StockQuantity -= dto.Quantity;
 
-            _context.OrderItems.Add(item);
+            Context.OrderItems.Add(item);
 
             items.Add(item);
         }
 
-        await _context.SaveChangesAsync();
+        await Context.SaveChangesAsync();
 
         return items;
     }
