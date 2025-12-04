@@ -61,8 +61,8 @@ const LiqPayButton = (props: LiqPayButtonProps) => {
 
       form.appendChild(dataInput);
       form.appendChild(signatureInput);
-      window.open('/profile', '_blank');
-      form.target = '_self';
+      // window.open('/profile', '_blank');
+      // form.target = '_self';
       document.body.appendChild(form);
       form.submit();
     } catch (err) {
