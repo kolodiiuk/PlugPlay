@@ -81,14 +81,18 @@ public class OrderService : BaseService<OrderService>, IOrderService
                     return Result.Fail<OrderResponse>($"{paymentDataResult.Error}");
                 }
 
+                await Context.SaveChangesAsync();
+                await ClearCart();
                 scope.Complete();
+
                 return Result.Success(new OrderResponse
                 {
                     OrderId = newOrder.Id,
                     PaymentData = paymentDataResult.Value
                 });
             }
-            else if (orderReq.PaymentMethod == PaymentMethod.Cash)
+
+            if (orderReq.PaymentMethod == PaymentMethod.Cash)
             {
                 newOrder.TotalAmount = totalWithDelivery;
             }
