@@ -9,9 +9,11 @@ public interface IWishListService
 
     Task<Result<WishList>> GetWishListItemAsyncById(int itemId);
 
-    Task<Result<IEnumerable<WishList>>> GetUserWishList(int userId);
+    Task<Result<bool>> IsItemInWishListAsync(int prodId, int userId);
 
-    Task<Result> RemoveWishListItem(int itemId);
+    Task<Result<IEnumerable<WishList>>> GetUserWishListAsync(int userId);
 
-    Task<Result> ClearUserWishList(int userId);
+    Task<Result> RemoveWishListItemAsync(int itemId);
+
+    Task<Result> ClearUserWishListAsync(int userId);
 }
