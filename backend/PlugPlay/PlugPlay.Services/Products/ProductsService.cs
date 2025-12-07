@@ -146,7 +146,8 @@ public class ProductsService : BaseService<ProductsService>, IProductsService
 
     public async Task<Result<IEnumerable<Attribute>>> GetCategoryAttributesAsync(
         int categoryId,
-        int[] productIds = null)
+        int[] productIds = null,
+        int[] selectedAttrs = null)
     {
         List<int> categoryIds;
         int[] targetProductIds = null;
@@ -240,12 +241,27 @@ public class ProductsService : BaseService<ProductsService>, IProductsService
 
             var attributeIds = attributeCounts.Select(ac => ac.AttributeId).ToList();
 
-            var attributes = await Context.Attributes
-                .AsNoTracking()
-                .Where(a => attributeIds.Contains(a.Id))
-                .Include(a => a.ProductAttributes.Where(pa =>
-                    targetProductIds == null || targetProductIds.Contains(pa.ProductId)))
-                .ToListAsync();
+            List<Attribute> attributes = new List<Attribute>();
+            if (selectedAttrs.Length == 0)
+            {
+
+                attributes = await Context.Attributes
+                    .AsNoTracking()
+                    .Where(a => attributeIds.Contains(a.Id))
+                    .Include(a => a.ProductAttributes.Where(pa =>
+                        (targetProductIds == null || targetProductIds.Contains(pa.ProductId))))
+                    .ToListAsync();
+            }
+            else
+            {
+                attributes = await Context.Attributes
+                    .AsNoTracking()
+                    .Where(a => attributeIds.Contains(a.Id))
+                    .Include(a => a.ProductAttributes.Where(pa =>
+                        (targetProductIds == null || targetProductIds.Contains(pa.ProductId))
+                        || selectedAttrs.Contains(pa.AttributeId)))
+                    .ToListAsync();
+            }
 
             return Result.Success<IEnumerable<Attribute>>(attributes);
         }

@@ -76,14 +76,15 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost("attribute/{categoryId:int}")]
-    public async Task<IActionResult> GetAttributes(int categoryId, [FromBody] int[] productIds = null)
+    public async Task<IActionResult> GetAttributes(int categoryId, [FromBody] GetAttributesDto dto)
     {
         if (categoryId < 1)
         {
             return BadRequest("Invalid categroyId");
         }
 
-        var result = await _productsService.GetCategoryAttributesAsync(categoryId, productIds ?? new int[] {});
+        var result = await _productsService.GetCategoryAttributesAsync(categoryId, dto.ProductIds ?? new int[] { },
+            dto.SelectedAttrsIds ?? new int[] { });
         result.OnFailure(() =>
         {
             var failed = LoggerMessage.Define<int, string>(LogLevel.Error,
@@ -119,8 +120,8 @@ public class ProductsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        Result<Category> categoryResult = Result.Success(new Category() {Id = categoryId});
-        if (categoryId != int.MaxValue)  //  2147483647
+        Result<Category> categoryResult = Result.Success(new Category() { Id = categoryId });
+        if (categoryId != int.MaxValue) //  2147483647
         {
             categoryResult = await _productsService.GetCategoryAsync(categoryId);
             if (categoryResult.Failure)
@@ -215,7 +216,7 @@ public class ProductsController : ControllerBase
             productNotFound(_logger, id, null);
         });
 
-        if(result.Failure)
+        if (result.Failure)
         {
             return NotFound(result.Error);
         }
@@ -264,7 +265,7 @@ public class ProductsController : ControllerBase
         });
 
         result.OnFailure(() =>
-        _logger.LogError($"{result.Error}"));
+            _logger.LogError($"{result.Error}"));
 
         if (result.Failure)
         {
@@ -324,4 +325,11 @@ public class ProductsController : ControllerBase
 
         return Ok();
     }
+}
+
+public class GetAttributesDto
+{
+    public int[] ProductIds { get; set; }
+
+    public int[] SelectedAttrsIds { get; set; }
 }
