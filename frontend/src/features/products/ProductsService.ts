@@ -77,7 +77,7 @@ class ProductsService {
     const filterParams: any = {
       categoryId: actualCategoryId,
       minPrice: minPrice && minPrice > 0 ? minPrice : 0,
-      maxPrice: maxPrice && maxPrice < 5000 ? maxPrice : 1000000,
+      maxPrice: maxPrice && maxPrice < 70000 ? maxPrice : 1000000,
       sort,
       page,
       pageSize,
