@@ -22,5 +22,19 @@ namespace PlugPlay.Services.Interfaces
         Task<Result<IEnumerable<Attribute>>> GetCategoryAttributesAsync(int categoryId, int[] productIds = null);
 
         Task<Result<Category>> GetCategoryAsync(int categoryId);
+
+        Task<Result> AddProduct(AddProductDto req);
+
+        Task<Result> ChangeProduct(ChangeProductDto req);
+
+        Task<Result> DeleteProduct(int prodId);
+
+        Task<Result<IEnumerable<Category>>> GetAllCategories();
+
+        Task<Result<Category>> GetCategoryById(int id);
+
+        Task<Result<IEnumerable<Attribute>>> GetAllAttributes();
+
+        Task<Result<Attribute>> GetAttributeById(int id);
     }
 }

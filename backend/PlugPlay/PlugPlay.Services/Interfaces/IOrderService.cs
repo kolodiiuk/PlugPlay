@@ -16,4 +16,12 @@ public interface IOrderService
     Task<Result<IEnumerable<OrderItem>>> GetOrderItemsAsync(int orderId);
 
     Task<Result<LiqPayRefundResponse>> CancelOrderAsync(int orderId);
+
+    Task<Result> UpdateOrderStatusAsync(int orderId);
+
+    Task<Result> UpdatePaymentStatusAsync(int orderId);
+
+    Task<Result> CancelOrderCashAsync(int orderId);
+
+    Task<Result<LiqPayRefundResponse>> CancelOrderCardAsync(int orderId);
 }

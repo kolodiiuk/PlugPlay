@@ -15,14 +15,20 @@ public class OrderController : BaseController<OrderController>
         _orderService = orderService;
     }
 
-    [HttpPut("order/order-status/{id:int}")]
+    [HttpPut("order-status/{id:int}")]
     public async Task<IActionResult> UpdateOrderStatus(int orderId)
     {
         return StatusCode(418);
     }
 
-    [HttpPut("order/payment-status/{id:int}")]
+    [HttpPut("payment-status/{id:int}")]
     public async Task<IActionResult> UpdatePaymentStatus(int orderId)
+    {
+        return StatusCode(418);
+    }
+
+    [HttpPut("cancel")]
+    public async Task<IActionResult> CancelOrder(int orderId)
     {
         return StatusCode(418);
     }

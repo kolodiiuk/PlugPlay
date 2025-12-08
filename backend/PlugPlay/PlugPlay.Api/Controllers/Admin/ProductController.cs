@@ -1,32 +1,41 @@
+using System.Net;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers.Admin;
+
 [Authorize(Roles = "Admin")]
-[Microsoft.AspNetCore.Components.Route("api/admin/[controller]")]
+[Route("api/admin/[controller]")]
 public class ProductController : BaseController<ProductController>
 {
     private readonly IProductsService _productsService;
 
-    public ProductController(IProductsService productsService, ILogger<ProductController> logger) : base(logger)
+    private readonly Cloudinary _cloudinary;
+
+    public ProductController(IProductsService productsService, Cloudinary cloudinary,
+        ILogger<ProductController> logger) : base(logger)
     {
         _productsService = productsService;
+        _cloudinary = cloudinary;
     }
 
-    [HttpPost("product")]
+    [HttpPost]
     public async Task<IActionResult> AddProduct(ProductRequest req)
     {
         return StatusCode(418);
     }
 
-    [HttpPut("product/{prodId:int}")]
+    [HttpPut("{prodId:int}")]
     public async Task<IActionResult> ChangeProduct(int prodId, ProductRequest req)
     {
         return StatusCode(418);
     }
 
-    [HttpDelete("product/{prodId:int}")]
+    [HttpDelete("{prodId:int}")]
     public async Task<IActionResult> DeleteProduct(int prodId)
     {
         return StatusCode(418);
@@ -39,25 +48,7 @@ public class ProductController : BaseController<ProductController>
     }
 
     [HttpGet("category/{id:int}")]
-    public async Task<IActionResult> GetCategoryId(int id)
-    {
-        return StatusCode(418);
-    }
-
-    [HttpPost("category")]
-    public async Task<IActionResult> AddCategory(CategoryRequest req)
-    {
-        return StatusCode(418);
-    }
-
-    [HttpPut("category/{prodId:int}")]
-    public async Task<IActionResult> ChangeCategory(int catId, CategoryRequest req)
-    {
-        return StatusCode(418);
-    }
-
-    [HttpDelete("category/{prodId:int}")]
-    public async Task<IActionResult> DeleteCategory(int catId)
+    public async Task<IActionResult> GetCategoryById(int id)
     {
         return StatusCode(418);
     }
@@ -69,26 +60,43 @@ public class ProductController : BaseController<ProductController>
     }
 
     [HttpGet("attribute/{id:int}")]
-    public async Task<IActionResult> GetAttributeId(int id)
+    public async Task<IActionResult> GetAttributeById(int id)
     {
         return StatusCode(418);
     }
 
-    [HttpPost("attribute")]
-    public async Task<IActionResult> AddAttribute(AttributeRequest req)
+    [HttpPost("image/{productId:int}")]
+    public async Task<IActionResult> UploadImage(int productId, IFormFile file)
     {
-        return StatusCode(418);
-    }
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest("No file uploaded.");
+        }
 
-    [HttpPut("attribute/{prodId:int}")]
-    public async Task<IActionResult> ChangeAttribute(int attrId, AttributeRequest req)
-    {
-        return StatusCode(418);
-    }
+        var uploadParams = new ImageUploadParams()
+        {
+            File = new FileDescription(file.FileName, file.OpenReadStream()),
+            PublicId = Guid.NewGuid().ToString(),
+            Overwrite = true,
+            Folder = "uploads/"
+        };
 
-    [HttpDelete("attribute/{prodId:int}")]
-    public async Task<IActionResult> DeleteAttribute(int attrId)
-    {
-        return StatusCode(418);
+        var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+        if (uploadResult.StatusCode != HttpStatusCode.OK)
+        {
+            return BadRequest(new ProblemDetails() { Title = "Upload failed." });
+        }
+
+        var result = await _productsService.AddImageAsync(
+            productId, uploadResult.Url.AbsoluteUri);
+        result.OnFailure(() => Log(LogLevel.Error, AdminProductControllerEventIds.FailedToAddProductImage,
+                "Failed to add image for product {ProductId}. Error: {error}",
+                productId, result.Error));
+
+        result.OnSuccess(() => Log(LogLevel.Information, AdminProductControllerEventIds.ProductImageAdded,
+                "Added image for product {ProductId}", productId));
+
+        return Ok();
     }
 }

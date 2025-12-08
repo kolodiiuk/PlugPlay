@@ -262,6 +262,7 @@ public class OrderService : BaseService<OrderService>, IOrderService
         }
     }
 
+
     public async Task<Result<IEnumerable<OrderItem>>> GetOrderItemsAsync(int orderId)
     {
         try
@@ -289,6 +290,26 @@ public class OrderService : BaseService<OrderService>, IOrderService
             return Result.Fail<IEnumerable<OrderItem>>(
                 $"Exception thrown retrieving order items for order with id {orderId}. Message: {e.Message}");
         }
+    }
+
+    public async Task<Result> UpdateOrderStatusAsync(int orderId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<Result> UpdatePaymentStatusAsync(int orderId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<Result> CancelOrderCashAsync(int orderId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<Result<LiqPayRefundResponse>> CancelOrderCardAsync(int orderId)
+    {
+        throw new NotImplementedException();
     }
 
     private async Task<List<OrderItem>> CreateOrderItems(IEnumerable<OrderItemDto> orderItemDtos, int orderId)
