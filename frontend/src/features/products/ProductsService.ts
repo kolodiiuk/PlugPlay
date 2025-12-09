@@ -77,7 +77,7 @@ class ProductsService {
     const filterParams: any = {
       categoryId: actualCategoryId,
       minPrice: minPrice && minPrice > 0 ? minPrice : 0,
-      maxPrice: maxPrice && maxPrice < 5000 ? maxPrice : 1000000,
+      maxPrice: maxPrice && maxPrice < 70000 ? maxPrice : 1000000,
       sort,
       page,
       pageSize,
@@ -107,16 +107,25 @@ class ProductsService {
       return productIds.length > 0 ? productIds.sort((a, b) => a - b).join(',') : '';
     }, [productIds.length, products.length]);
 
-    useEffect(() => {
-      fetchAttributeGroups({
-        categoryId: actualCategoryId,
-        productIds: productIds.length > 0 ? productIds : undefined
-      }).then((result) => {
-        console.log("fetchAttributeGroups resolved:", result);
-      }).catch((error) => {
-        console.error("fetchAttributeGroups rejected:", error);
-      });
-    }, [actualCategoryId, productIdsKey, fetchAttributeGroups]);
+    // ...existing code...
+            useEffect(() => {
+              const selectedAttrIds = attributeFilters && Object.keys(attributeFilters).length > 0
+                ? Object.keys(attributeFilters)
+                    .map(k => Number(k))
+                    .filter(n => !Number.isNaN(n))
+                : undefined;
+    
+              fetchAttributeGroups({
+                categoryId: actualCategoryId,
+                productIds: productIds.length > 0 ? productIds : undefined,
+                selectedAttrsIds: selectedAttrIds,
+              }).then((result) => {
+                console.log("fetchAttributeGroups resolved:", result);
+              }).catch((error) => {
+                console.error("fetchAttributeGroups rejected:", error);
+              });
+            }, [actualCategoryId, productIdsKey, fetchAttributeGroups, attributeFilters]);
+    // ...existing code...
 
     const isLoading = isLoadingFiltered || isLoadingAttributes;
     const isError = isErrorFiltered || isErrorAttributes;

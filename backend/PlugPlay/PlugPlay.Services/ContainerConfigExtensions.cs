@@ -21,5 +21,6 @@ public static class ContainerConfigExtensions
         services.AddScoped<IProductsService, ProductsService>();
         services.AddScoped<IUserInfoService, UserInfoService>();
         services.AddScoped<LiqPayHelper, LiqPayHelper>();
+        services.AddScoped<IWishListService, WishListService>();
     }
 }

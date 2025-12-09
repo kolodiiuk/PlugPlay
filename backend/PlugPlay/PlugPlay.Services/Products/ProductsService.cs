@@ -10,25 +10,19 @@ using Attribute = PlugPlay.Domain.Entities.Attribute;
 
 namespace PlugPlay.Services.Products;
 
-public class ProductsService : IProductsService
+public class ProductsService : BaseService<ProductsService>, IProductsService
 {
-    private readonly PlugPlayDbContext _context;
-
-    private readonly ILogger<ProductsService> _logger;
-
-    public ProductsService(PlugPlayDbContext context, ILogger<ProductsService> logger)
+    public ProductsService(PlugPlayDbContext context, ILogger<ProductsService> logger) : base(context, logger)
     {
-        _context = context;
-        _logger = logger;
     }
 
     public async Task<IEnumerable<Product>> GetAllProductsAsync()
     {
-        _logger.LogInformation("Fetching all products");
+        Log(LogLevel.Information, new EventId(2000, "FetchingAllProducts"), "Fetching all products");
 
         try
         {
-            var query = _context.Products
+            var query = Context.Products
                 .Include(p => p.ProductAttributes)
                 .ThenInclude(pa => pa.Attribute)
                 .Include(p => p.ProductImages)
@@ -38,16 +32,12 @@ public class ProductsService : IProductsService
                 .AsQueryable();
 
             var products = await query.ToListAsync();
-            var productsRetrievedCount = LoggerMessage.Define<int>(
-                LogLevel.Information,
-                new EventId(2002, "ProductsRetrievedCount"),
-                "Successfully retrieved {Count} products");
-
-            productsRetrievedCount(_logger, products.Count, null);
+            Log(LogLevel.Information, new EventId(2002, "ProductsRetrievedCount"),
+                "Successfully retrieved {Count} products", products.Count);
 
             return products;
         }
-        catch (Exception e)
+        catch (Exception)
         {
             return new List<Product>();
         }
@@ -55,11 +45,11 @@ public class ProductsService : IProductsService
 
     public async Task<Result<IEnumerable<Product>>> GetAvailableProductsAsync()
     {
-        _logger.LogInformation("Fetching available products");
+        Log(LogLevel.Information, new EventId(2003, "FetchingAvailableProducts"), "Fetching available products");
 
         try
         {
-            var products = _context.Products
+            var products = Context.Products
                 .Where(p => p.StockQuantity != 0)
                 .Include(p => p.ProductAttributes)
                 .ThenInclude(pa => pa.Attribute)
@@ -68,41 +58,31 @@ public class ProductsService : IProductsService
                 .Include(p => p.Reviews)
                 .ThenInclude(r => r.User);
 
-            var productsRetrievedCountEnumerable = LoggerMessage.Define<int>(
-                LogLevel.Information,
-                new EventId(2002, "ProductsRetrievedCountEnumerable"),
-                "Successfully retrieved {Count} products");
-
-            productsRetrievedCountEnumerable(_logger, products.Count(), null);
+            Log(LogLevel.Information, new EventId(2002, "ProductsRetrievedCount"),
+                "Successfully retrieved {Count} products", products.Count());
 
             return Result.Success<IEnumerable<Product>>(await products.ToListAsync());
         }
         catch (Exception e)
         {
+            Log(LogLevel.Error, new EventId(2004, "GetAvailableProductsError"),
+                "Error fetching available products. Error: {error}", e.Message);
+
             return Result.Fail<IEnumerable<Product>>(e.Message);
         }
     }
 
     public async Task<Result> AddImageAsync(int productId, string uploadResultUrl)
     {
-        var addingProductImage = LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(2000, "AddingProductImage"),
-            "Adding image for product {ProductId}");
-
-        addingProductImage(_logger, productId, null);
+        Log(LogLevel.Information, new EventId(2000, "AddingProductImage"), "Adding image for product {ProductId}",
+            productId);
         try
         {
-            var product = await _context.Products.FindAsync(productId);
+            var product = await Context.Products.FindAsync(productId);
             if (product is null)
             {
-                var productNotFoundWarning = LoggerMessage.Define<int>(
-                    LogLevel.Warning,
-                    new EventId(2001, "ProductNotFoundWarning"),
-                    "Product with ID {ProductId} not found");
-
-                productNotFoundWarning(_logger, productId, null);
-
+                Log(LogLevel.Warning, new EventId(2001, "ProductNotFoundWarning"),
+                    "Product with ID {ProductId} not found", productId);
                 return Result.Fail("No such product");
             }
 
@@ -111,26 +91,18 @@ public class ProductsService : IProductsService
                 ImageUrl = uploadResultUrl,
                 ProductId = productId
             };
-            _context.ProductImages.Add(image);
-            await _context.SaveChangesAsync();
+            Context.ProductImages.Add(image);
+            await Context.SaveChangesAsync();
 
-            var productImageAddedSuccess = LoggerMessage.Define<int>(
-                LogLevel.Information,
-                new EventId(2000, "ProductImageAddedSuccess"),
-                "Successfully added image for product {ProductId}");
-
-            productImageAddedSuccess(_logger, productId, null);
+            Log(LogLevel.Information, new EventId(2000, "ProductImageAddedSuccess"),
+                "Successfully added image for product {ProductId}", productId);
 
             return Result.Success();
         }
         catch (Exception e)
         {
-            var failedToAddProductImageError = LoggerMessage.Define<int>(
-                LogLevel.Error,
-                new EventId(2001, "FailedToAddProductImageError"),
-                "Failed to add image for product {ProductId}");
-
-            failedToAddProductImageError(_logger, productId, e);
+            Log(LogLevel.Error, new EventId(2001, "FailedToAddProductImageError"),
+                "Failed to add image for product {ProductId}. Error: {error}", productId, e.Message);
 
             return Result.Fail($"{e.Message}");
         }
@@ -140,7 +112,7 @@ public class ProductsService : IProductsService
     {
         try
         {
-            var query = _context.Products.AsQueryable().AsExpandable();
+            var query = Context.Products.AsQueryable().AsExpandable();
 
             if (request.Predicate != null)
             {
@@ -165,7 +137,8 @@ public class ProductsService : IProductsService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error filtering products");
+            Log(LogLevel.Error, new EventId(2010, "FilterProductsError"), "Error filtering products. Error: {error}",
+                e.Message);
 
             return Result.Fail<IEnumerable<Product>>($"Problem filtering products: {e.Message}");
         }
@@ -173,22 +146,23 @@ public class ProductsService : IProductsService
 
     public async Task<Result<IEnumerable<Attribute>>> GetCategoryAttributesAsync(
         int categoryId,
-        int[] productIds = null)
+        int[] productIds = null,
+        int[] selectedAttrs = null)
     {
         List<int> categoryIds;
         int[] targetProductIds = null;
 
         try
         {
-// all available
+            // all available
             if (categoryId == int.MaxValue)
             {
-                var categoryIdsWithProducts = await _context.Products
+                var categoryIdsWithProducts = await Context.Products
                     .Select(p => p.CategoryId)
                     .Distinct()
                     .ToListAsync();
 
-                categoryIds = await _context.Categories
+                categoryIds = await Context.Categories
                     .Where(c => categoryIdsWithProducts.Contains(c.Id))
                     .Select(c => c.Id)
                     .ToListAsync();
@@ -199,7 +173,7 @@ public class ProductsService : IProductsService
                 }
                 else
                 {
-                    targetProductIds = await _context.Products
+                    targetProductIds = await Context.Products
                         .Where(p => p.StockQuantity != 0)
                         .Select(p => p.Id)
                         .ToArrayAsync();
@@ -218,7 +192,7 @@ public class ProductsService : IProductsService
                                                   )
                                                   SELECT * FROM descendants
                                               """;
-                var descendantCategories = await _context.Categories
+                var descendantCategories = await Context.Categories
                     .FromSqlInterpolated(FormattableStringFactory.Create(descendantsSql, categoryId))
                     .AsNoTracking()
                     .ToListAsync();
@@ -240,20 +214,20 @@ public class ProductsService : IProductsService
 
             if (targetProductIds != null && targetProductIds.Length > 0)
             {
-                productsQuery = _context.Products
+                productsQuery = Context.Products
                     .AsNoTracking()
                     .Where(p => categoryIds.Contains(p.CategoryId) && targetProductIds.Contains(p.Id))
                     .Select(p => p.Id);
             }
             else
             {
-                productsQuery = _context.Products
+                productsQuery = Context.Products
                     .AsNoTracking()
                     .Where(p => categoryIds.Contains(p.CategoryId))
                     .Select(p => p.Id);
             }
 
-            var attributeCounts = await _context.ProductAttributes
+            var attributeCounts = await Context.ProductAttributes
                 .AsNoTracking()
                 .Where(pa => productsQuery.Contains(pa.ProductId))
                 .GroupBy(pa => pa.AttributeId)
@@ -267,28 +241,46 @@ public class ProductsService : IProductsService
 
             var attributeIds = attributeCounts.Select(ac => ac.AttributeId).ToList();
 
-            var attributes = await _context.Attributes
-                .AsNoTracking()
-                .Where(a => attributeIds.Contains(a.Id))
-                .Include(a => a.ProductAttributes.Where(pa =>
-                    targetProductIds == null || targetProductIds.Contains(pa.ProductId)))
-                .ToListAsync();
+            List<Attribute> attributes = new List<Attribute>();
+            if (selectedAttrs.Length == 0)
+            {
+
+                attributes = await Context.Attributes
+                    .AsNoTracking()
+                    .Where(a => attributeIds.Contains(a.Id))
+                    .Include(a => a.ProductAttributes.Where(pa =>
+                        (targetProductIds == null || targetProductIds.Contains(pa.ProductId))))
+                    .ToListAsync();
+            }
+            else
+            {
+                attributes = await Context.Attributes
+                    .AsNoTracking()
+                    .Where(a => attributeIds.Contains(a.Id))
+                    .Include(a => a.ProductAttributes.Where(pa =>
+                        (targetProductIds == null || targetProductIds.Contains(pa.ProductId))
+                        || selectedAttrs.Contains(pa.AttributeId)))
+                    .ToListAsync();
+            }
 
             return Result.Success<IEnumerable<Attribute>>(attributes);
         }
         catch (Exception e)
         {
+            Log(LogLevel.Error, new EventId(2011, "GetCategoryAttributesError"),
+                "Error getting category attributes. Error: {error}", e.Message);
+
             return Result.Fail<IEnumerable<Attribute>>(e.Message);
         }
     }
 
     public async Task<Result<IEnumerable<Product>>> SearchProductsAsync(ProductSearchRequest req)
     {
-        _logger.LogInformation("Fetching available products");
+        Log(LogLevel.Information, new EventId(2012, "SearchProductsStart"), "Fetching available products");
 
         try
         {
-            var query = _context.Products.AsNoTracking().AsQueryable();
+            var query = Context.Products.AsNoTracking().AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(req.Query))
             {
@@ -308,17 +300,16 @@ public class ProductsService : IProductsService
                 .Take(pageSize)
                 .ToListAsync();
 
-            var productsRetrievedSuccess = LoggerMessage.Define<int>(
-                LogLevel.Information,
-                new EventId(2002, "ProductsRetrievedSuccess"),
-                "Successfully retrieved {Count} products");
-
-            productsRetrievedSuccess(_logger, products.Count, null);
+            Log(LogLevel.Information, new EventId(2002, "ProductsRetrievedSuccess"),
+                "Successfully retrieved {Count} products", products.Count);
 
             return Result.Success<IEnumerable<Product>>(products);
         }
         catch (Exception e)
         {
+            Log(LogLevel.Error, new EventId(2013, "SearchProductsError"), "Error searching products: {error}",
+                e.Message);
+
             return Result.Fail<IEnumerable<Product>>($"Error searching products: {e.Message}");
         }
     }
@@ -327,7 +318,7 @@ public class ProductsService : IProductsService
     {
         try
         {
-            var category = await _context.Categories
+            var category = await Context.Categories
                 .Include(c => c.ParentCategory)
                 .Include(c => c.SubCategories)
                 .FirstOrDefaultAsync(c => c.Id == categoryId);
@@ -341,22 +332,20 @@ public class ProductsService : IProductsService
         }
         catch (Exception e)
         {
+            Log(LogLevel.Error, new EventId(2014, "GetCategoryError"),
+                "Error getting category {categoryId}. Error: {error}", categoryId, e.Message);
+
             return Result.Fail<Category>(e.Message);
         }
     }
 
     public async Task<Result<Product>> GetProductByIdAsync(int id)
     {
-        var fetchingProduct = LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(2000, "FetchingProduct"),
-            "Fetching product with ID: {ProductId}");
-
-        fetchingProduct(_logger, id, null);
+        Log(LogLevel.Information, new EventId(2000, "FetchingProduct"), "Fetching product with ID: {ProductId}", id);
 
         try
         {
-            var product = await _context.Products
+            var product = await Context.Products
                 .Include(p => p.ProductAttributes)
                 .ThenInclude(pa => pa.Attribute)
                 .Include(p => p.ProductImages)
@@ -367,27 +356,22 @@ public class ProductsService : IProductsService
 
             if (product == null)
             {
-                var productNotFoundWarningById = LoggerMessage.Define<int>(
-                    LogLevel.Warning,
-                    new EventId(2001, "ProductNotFoundWarningById"),
-                    "Product with ID {ProductId} not found");
-
-                productNotFoundWarningById(_logger, id, null);
+                Log(LogLevel.Warning, new EventId(2001, "ProductNotFoundWarningById"),
+                    "Product with ID {ProductId} not found", id);
 
                 return Result.Fail<Product>($"Product with ID {id} not found.");
             }
 
-            var productRetrievedSuccess = LoggerMessage.Define<int>(
-                LogLevel.Information,
-                new EventId(2002, "ProductRetrievedSuccess"),
-                "Successfully retrieved product with ID: {ProductId}");
-
-            productRetrievedSuccess(_logger, id, null);
+            Log(LogLevel.Information, new EventId(2002, "ProductRetrievedSuccess"),
+                "Successfully retrieved product with ID: {ProductId}", id);
 
             return Result.Success(product);
         }
         catch (Exception e)
         {
+            Log(LogLevel.Error, new EventId(2015, "GetProductByIdError"), "Error fetching product {id}. Error: {error}",
+                id, e.Message);
+
             return Result.Fail<Product>(e.Message);
         }
     }

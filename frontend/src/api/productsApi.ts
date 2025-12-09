@@ -58,17 +58,18 @@ export const productsApi = baseApi.injectEndpoints({
       }),
       providesTags: [{ type: 'Products' } as any],
     }),
-    getAttributeGroups: builder.mutation<AttributeGroup[], { categoryId: number; productIds?: number[] }>({
-      query: ({ categoryId, productIds }) => {
-        const body = productIds && productIds.length ? productIds : undefined;
-
-        return {
-          url: `products/attribute/${categoryId}`,
-          method: 'POST',
-          body,
-        };
-      },
-    }),
+    // ...existing code...
+        getAttributeGroups: builder.mutation<AttributeGroup[], { categoryId: number; productIds?: number[]; selectedAttrsIds?: number[] }>({
+          query: ({ categoryId, productIds, selectedAttrsIds }) => ({
+            url: `products/attribute/${categoryId}`,
+            method: 'POST',
+            body: {
+              productIds,
+              selectedAttrsIds,
+            },
+          }),
+        }),
+    // ...existing code...
     getProductById: builder.query<Product, number>({
       query: (id) => ({
         url: `products/${id}`,
