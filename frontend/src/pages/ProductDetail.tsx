@@ -10,6 +10,12 @@ import {useCartContext} from '../context/CartContext.tsx';
 import {storage} from '../utils/StorageService.ts';
 import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
 import {skipToken} from '@reduxjs/toolkit/query';
+import {
+    useAddToWishlistMutation,
+    useIsInWishlistQuery,
+    useRemoveWishlistItemMutation,
+    useGetUserWishlistQuery
+} from '../api/wishlistApi';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
@@ -36,6 +42,11 @@ const ProductDetail = () => {
   const {refetch: updateCart} = cartService.useCart(user?.id);
   const addToCart = cartService.useAddToCart(user?.id);
   const {isCartOpen, openCart} = useCartContext();
+
+  const {data: isInWishList, refetch: recheckWishList} = useIsInWishlistQuery(productId);
+  const [addToWishList] = useAddToWishlistMutation();
+  const [removeWishListItem] = useRemoveWishlistItemMutation();
+  const {refetch: updateWishList} = useGetUserWishlistQuery();
 
   useEffect(() => {
     if (!isCartOpen) {
@@ -102,6 +113,20 @@ const ProductDetail = () => {
     recheckInCart();
     updateCart();
   };
+
+  const handleWishListChange = async () => {
+    if(!product) {
+      return;
+    }
+
+    const { itemId } = await addToWishList(product?.id).unwrap();
+
+    if(isInWishList) {
+      await removeWishListItem(itemId);
+    }
+    recheckWishList();
+    updateWishList();
+  }
 
   const purchaseUnavailable = product.stockQuantity < 1 || isInCart;
 
@@ -214,16 +239,16 @@ const ProductDetail = () => {
               </button>
 
               <button
-                onClick={() => setIsFavorite(!isFavorite)}
+                onClick={handleWishListChange}
                 className={`p-3 rounded-lg border-2 transition-all ${
-                  isFavorite
+                  isInWishList
                     ? 'bg-red-50 border-red-500 text-red-500'
                     : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
                 }`}
               >
                 <Heart
                   className="w-6 h-6"
-                  fill={isFavorite ? 'currentColor' : 'none'}
+                  fill={isInWishList ? 'currentColor' : 'none'}
                 />
               </button>
             </div>
