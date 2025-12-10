@@ -1,14 +1,14 @@
 import { ShoppingCart, X } from 'lucide-react';
 import { Product } from '../../models/Product';
 
-
 interface WishlistItemProps {
     itemId: number;
     product: Product | undefined;
     onRemove: (id: number) => void;
+    onImageClick: (productId: number | undefined) => void;
 }
 
-export default function WishlistItem({ itemId, product, onRemove }: WishlistItemProps) {
+export default function WishlistItem({ itemId, product, onRemove, onImageClick }: WishlistItemProps) {
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('uk-UA', {
             minimumFractionDigits: 2,
@@ -27,10 +27,16 @@ export default function WishlistItem({ itemId, product, onRemove }: WishlistItem
             </button>
 
             <div className="flex gap-4 mb-4">
-                <div
-                    className="w-20 h-20 rounded-lg flex-shrink-0"
-                    //style={{ backgroundColor: product.imageColor }}
-                />
+                <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                      <img
+                        src={product?.pictureUrls[0] ?? ""}
+                        alt={product?.name ?? "product"}
+                        className="w-full h-full object-cover"
+                        onClick={() => {
+                          onImageClick(product?.id);
+                        }}
+                      />
+                  </div>
 
                 <div className="flex-1">
                     <h3 className="text-base font-medium text-gray-900 mb-1">

@@ -6,6 +6,7 @@ import { WishList } from '../../models/WishList';
 import {storage} from '../../utils/StorageService';
 import {useGetUserByTokenQuery} from '../../api/userInfoApi.ts'
 import {useGetAllProductsQuery} from '../../api/productsApi.ts';
+import {useNavigate, useLocation} from 'react-router-dom';
 import {
     useAddToWishlistMutation,
     useGetWishlistItemQuery,
@@ -14,6 +15,7 @@ import {
     useRemoveWishlistItemMutation,
     useClearWishlistMutation
 } from '../../api/wishlistApi';
+import { useCartContext } from '../../context/CartContext.tsx';
 
 interface WishlistModalProps {
     isOpen: boolean;
@@ -21,14 +23,10 @@ interface WishlistModalProps {
 }
 
 export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
-    const token = storage.useAccessToken();
-    // const {
-    //     data: fetchedUser,
-    //     isLoading: isLoadingUser,
-    //     isError: isUserError
-    // } = useGetUserByTokenQuery(token ?? skipToken);
+    const navigate = useNavigate();
+    const {isCartOpen, closeCart} = useCartContext();
 
-    const {data: wishlistItems, isLoading, isError, refetch} = useGetUserWishlistQuery();
+    const {data: wishlistItems, isLoading : isLoadingWishList, isError : isWishListError, refetch} = useGetUserWishlistQuery();
     const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
 
     const sortedItems = useMemo(
@@ -47,17 +45,46 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
     const [removeItem] = useRemoveWishlistItemMutation();
     const [clear] = useClearWishlistMutation();
 
-    const handleRemoveItem = async (id: number) => {
+    const handleRemoveItem = async (id: number, productId? : number) => {
         await removeItem(id);
         refetch();
+        reloadIfNeeded(productId);
     };
 
     const handleClearAll = async () => {
         await clear();
         refetch();
+        reloadIfNeeded();
     };
 
-    if (!isOpen) return null;
+    const handleNavigate = (productId?: number) => {
+        if (!productId) {
+            return;
+        }
+
+        navigate(`/product/${productId}`);
+        onClose();
+    };
+
+    const reloadIfNeeded = (productId?: number) => {
+        console.log(location.pathname);
+        console.log((`/product/${productId}`));
+
+        if (location.pathname === ("/")
+            || (!productId && location.pathname.startsWith("/product/"))
+            || (productId && location.pathname === (`/product/${productId}`))) {
+            console.log("reload");
+            window.location.reload();
+        }
+    };
+
+    const isError = isWishListError || isProductsError;
+    const isLoading = isLoadingWishList || isLoadingProducts;
+    if (!isOpen || isError || isLoading) return null;
+
+    if(isCartOpen) {
+        closeCart();
+    }
 
     return (
         <>
@@ -96,6 +123,7 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
                                     itemId={item.id}
                                     product={item.product}
                                     onRemove={handleRemoveItem}
+                                    onImageClick={handleNavigate}
                                 />
                             ))}
                         </div>
