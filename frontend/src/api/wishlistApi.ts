@@ -3,24 +3,13 @@ import { WishList } from "../models/WishList";
 
 export const wishlistApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-
+    
     addToWishlist: builder.mutation<{ itemId: number }, number>({
       query: (productId) => ({
         url: `wishlist/${productId}`,
         method: "POST",
       }),
-    }),
-
-    getWishlistItem: builder.query<WishList, number>({
-      query: (itemId) => `wishlist/item/${itemId}`,
-    }),
-
-    isInWishlist: builder.query<boolean, number>({
-      query: (productId) => `wishlist/${productId}`,
-    }),
-
-    getUserWishlist: builder.query<WishList[], void>({
-      query: () => `wishlist`,
+      invalidatesTags: ["Wishlist"], 
     }),
 
     removeWishlistItem: builder.mutation<void, number>({
@@ -28,6 +17,7 @@ export const wishlistApi = baseApi.injectEndpoints({
         url: `wishlist/${itemId}`,
         method: "DELETE",
       }),
+      invalidatesTags: ["Wishlist"],
     }),
 
     clearWishlist: builder.mutation<void, void>({
@@ -35,7 +25,24 @@ export const wishlistApi = baseApi.injectEndpoints({
         url: `wishlist`,
         method: "DELETE",
       }),
+      invalidatesTags: ["Wishlist"],
     }),
+
+    getWishlistItem: builder.query<WishList, number>({
+      query: (itemId) => `wishlist/item/${itemId}`,
+      providesTags: ["Wishlist"],
+    }),
+
+    isInWishlist: builder.query<boolean, number>({
+      query: (productId) => `wishlist/${productId}`,
+      providesTags: ["Wishlist"],
+    }),
+
+    getUserWishlist: builder.query<WishList[], void>({
+      query: () => `wishlist`,
+      providesTags: ["Wishlist"],
+    }),
+
   }),
 });
 
