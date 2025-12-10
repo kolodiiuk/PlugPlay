@@ -14,14 +14,6 @@ namespace PlugPlay.Services.Ordering;
 
 public class OrderService : BaseService<OrderService>, IOrderService
 {
-    private static readonly EventId GetOrderByIdEvent = new(2006, nameof(GetOrderAsync));
-
-    private static readonly EventId ClearCartEvent = new(2007, "ClearCart");
-
-    private static readonly EventId RefundPaymentSuccessEvent = new(2008, "RefundPaymentSuccess");
-
-    private static readonly EventId RefundPaymentFailureEvent = new(2009, "RefundPaymentFailure");
-
     private readonly IPaymentService _paymentService;
 
     private readonly ICartService _cartService;
@@ -140,7 +132,8 @@ public class OrderService : BaseService<OrderService>, IOrderService
             var cartRes = await _cartService.ClearCartAsync(orderReq.UserId);
             if (cartRes.Failure)
             {
-                Log(LogLevel.Warning, ClearCartEvent, "Couldn't clear cart. Error: {error}", cartRes.Error);
+                Log(LogLevel.Warning, OrderServiceEventIds.ClearCartEvent, "Couldn't clear cart. Error: {error}",
+                    cartRes.Error);
             }
         }
     }
@@ -203,7 +196,8 @@ public class OrderService : BaseService<OrderService>, IOrderService
 
             if (order == null)
             {
-                Log(LogLevel.Warning, GetOrderByIdEvent, "Order with ID {orderId} not found.", orderId);
+                Log(LogLevel.Warning, OrderServiceEventIds.GetOrderByIdEvent,
+                    "Order with ID {orderId} not found.", orderId);
 
                 return Result.Fail<Order>($"Order with ID {orderId} not found.");
             }
@@ -240,9 +234,9 @@ public class OrderService : BaseService<OrderService>, IOrderService
             {
                 result = await _paymentService.RefundPayment(orderId);
                 result.OnSuccess(() =>
-                        Log(LogLevel.Information, RefundPaymentSuccessEvent, "Success refunding payment"))
+                        Log(LogLevel.Information, OrderServiceEventIds.RefundPaymentSuccessEvent, "Success refunding payment"))
                     .OnFailure(() =>
-                        Log(LogLevel.Error, RefundPaymentFailureEvent, "Refund failed: {error}", result.Error));
+                        Log(LogLevel.Error, OrderServiceEventIds.RefundPaymentFailureEvent, "Refund failed: {error}", result.Error));
 
                 if (result.Value.Result == "error")
                 {
@@ -494,9 +488,9 @@ public class OrderService : BaseService<OrderService>, IOrderService
             {
                 result = await _paymentService.RefundPayment(order.Id);
                 result.OnSuccess(() =>
-                        Log(LogLevel.Information, RefundPaymentSuccessEvent, "Success refunding payment"))
+                        Log(LogLevel.Information, OrderServiceEventIds.RefundPaymentSuccessEvent, "Success refunding payment"))
                     .OnFailure(() =>
-                        Log(LogLevel.Error, RefundPaymentFailureEvent, "Refund failed: {error}", result.Error));
+                        Log(LogLevel.Error, OrderServiceEventIds.RefundPaymentFailureEvent, "Refund failed: {error}", result.Error));
 
                 if (result.Value.Result == "error")
                 {
