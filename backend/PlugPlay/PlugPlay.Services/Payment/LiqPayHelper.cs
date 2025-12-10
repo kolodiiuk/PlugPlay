@@ -29,6 +29,7 @@ public class LiqPayHelper
             currency,
             description,
             order_id = orderId.ToString(),
+            result_url = "https://plugplay.dev1.dev/profile"
         };
 
         var jsonParams = JsonSerializer.Serialize(paymentParams);
@@ -72,7 +73,7 @@ public class LiqPayHelper
             public_key = _publicKey,
             version = 7,
             action = "refund",
-            order_id = orderId.ToString()
+            order_id = orderId.ToString(),
         };
 
         var json = JsonSerializer.Serialize(payload);
