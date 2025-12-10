@@ -26,12 +26,19 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
     const navigate = useNavigate();
     const {isCartOpen, closeCart} = useCartContext();
 
-    const {data: wishlistItems, isLoading : isLoadingWishList, isError : isWishListError, refetch} = useGetUserWishlistQuery();
+    const {
+        data: wishListItems,
+        isLoading: isLoadingWishList,
+        isError: isWishListError
+    } = useGetUserWishlistQuery(undefined, {
+        skip: !storage.getAccessToken,
+    });
+
     const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
 
     const sortedItems = useMemo(
-        () => [...(wishlistItems ?? [])].sort((a, b) => a.id - b.id),
-        [wishlistItems]
+        () => [...(wishListItems ?? [])].sort((a, b) => a.id - b.id),
+        [wishListItems]
     );
 
     const enrichedItems = useMemo(() =>
@@ -47,14 +54,10 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
 
     const handleRemoveItem = async (id: number, productId? : number) => {
         await removeItem(id);
-        refetch();
-        reloadIfNeeded(productId);
     };
 
     const handleClearAll = async () => {
         await clear();
-        refetch();
-        reloadIfNeeded();
     };
 
     const handleNavigate = (productId?: number) => {

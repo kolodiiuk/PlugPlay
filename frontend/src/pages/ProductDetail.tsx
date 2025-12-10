@@ -43,18 +43,16 @@ const ProductDetail = () => {
   const addToCart = cartService.useAddToCart(user?.id);
   const {isCartOpen, openCart} = useCartContext();
 
-  const {data: isInWishList, refetch: recheckWishList} = useIsInWishlistQuery(productId);
+  const {data: isInWishList = false} = useIsInWishlistQuery(productId, {
+        skip: !user,});
   const [addToWishList] = useAddToWishlistMutation();
   const [removeWishListItem] = useRemoveWishlistItemMutation();
-  const {refetch: updateWishList} = useGetUserWishlistQuery();
 
   useEffect(() => {
     if (!isCartOpen) {
       recheckInCart();
     }
   }, [isCartOpen]);
-
-  const [isFavorite, setIsFavorite] = useState(false);
 
   if (isLoading || isLoadingUser) {
     return (
@@ -115,7 +113,7 @@ const ProductDetail = () => {
   };
 
   const handleWishListChange = async () => {
-    if(!product) {
+    if(!product || !user) {
       return;
     }
 
@@ -124,8 +122,6 @@ const ProductDetail = () => {
     if(isInWishList) {
       await removeWishListItem(itemId);
     }
-    recheckWishList();
-    updateWishList();
   }
 
   const purchaseUnavailable = product.stockQuantity < 1 || isInCart;
@@ -240,10 +236,11 @@ const ProductDetail = () => {
 
               <button
                 onClick={handleWishListChange}
+                disabled={!user}
                 className={`p-3 rounded-lg border-2 transition-all ${
                   isInWishList
                     ? 'bg-red-50 border-red-500 text-red-500'
-                    : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                    : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 disabled: bg-white disabled:border-gray-800 disabled:hover:border-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300'
                 }`}
               >
                 <Heart

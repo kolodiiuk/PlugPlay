@@ -16,12 +16,15 @@ import {
   setSearchQuery,
 } from '../app/slices/filterSlice';
 import { useSearchProductsQuery } from '../api/productsApi';
+import { useAddToWishlistMutation, useGetUserWishlistQuery, useRemoveWishlistItemMutation } from '../api/wishlistApi';
+import { storage } from '../utils/StorageService';
 
 const Catalog = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  const isAuthenticated = !!storage.getAccessToken();
   const {
     selectedCategory,
     searchQuery = '',
@@ -30,7 +33,18 @@ const Catalog = () => {
     sortOption = { value: 'price-asc', label: 'Price (Low to High)' },
   } = useAppSelector((state) => state.filter || {});
 
-  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const {
+    data: wishListItems,
+    isLoading: isLoadingWishList,
+    isError: isWishListError
+  } = useGetUserWishlistQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  const [addToWishList] = useAddToWishlistMutation();
+  const [removeFromWishList] = useRemoveWishlistItemMutation();
+
+  const WishListIds = (wishListItems ?? []).map(i => i.productId);
   const [visibleCount, setVisibleCount] = useState(20);
 
   // Use search API when there's a search query, otherwise use filter API
@@ -86,7 +100,7 @@ const Catalog = () => {
     dispatch(setSortOption(option));
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingWishList) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -99,7 +113,7 @@ const Catalog = () => {
     );
   }
 
-  if (isError) {
+  if (isError || isWishListError) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -120,16 +134,18 @@ const Catalog = () => {
 
   const visibleProducts = products.slice(0, visibleCount);
 
-  const handleToggleFavorite = (productId: number) => {
-    setFavoriteIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(productId)) {
-        newSet.delete(productId);
-      } else {
-        newSet.add(productId);
-      }
-      return newSet;
-    });
+  const handleChangeWishList = (productId: number) => {
+    if (!wishListItems || !isAuthenticated) {
+      return;
+    }
+
+    const existingId = wishListItems.find(i => i.productId === productId)?.id;
+    if (existingId) {
+      removeFromWishList(existingId);
+    }
+    else {
+      addToWishList(productId);
+    }
   };
 
   const handleProductClick = (productId: number) => {
@@ -208,8 +224,9 @@ const Catalog = () => {
                       rating={0}
                       reviewCount={10}
                       image={product.pictureUrls[0]}
-                      isFavorite={favoriteIds.has(product.id)}
-                      onToggleFavorite={handleToggleFavorite}
+                      isFavorite={WishListIds.includes(product.id)}
+                      canAddToFavorite={isAuthenticated}
+                      onToggleFavorite={handleChangeWishList}
                       onClick={handleProductClick}
                     />
                   ))}

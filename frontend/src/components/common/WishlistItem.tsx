@@ -4,7 +4,7 @@ import { Product } from '../../models/Product';
 interface WishlistItemProps {
     itemId: number;
     product: Product | undefined;
-    onRemove: (id: number) => void;
+    onRemove: (id: number, productId? : number) => void;
     onImageClick: (productId: number | undefined) => void;
 }
 
@@ -19,7 +19,7 @@ export default function WishlistItem({ itemId, product, onRemove, onImageClick }
     return (
         <div className="relative bg-white rounded-lg p-4 mb-3">
             <button
-                onClick={() => onRemove(itemId)}
+                onClick={() => onRemove(itemId, product?.id)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
                 aria-label="Remove from wishlist"
             >
