@@ -20,7 +20,10 @@ public interface IProductsService
 
     Task<Result<IEnumerable<Product>>> FilterProductsAsync(FilterProductsRequest request);
 
-    Task<Result<IEnumerable<Attribute>>> GetCategoryAttributesAsync(int categoryId, int[] productIds = null);
+    Task<Result<IEnumerable<Attribute>>> GetCategoryAttributesAsync(
+        int categoryId,
+        int[] productIds = null,
+        int[] selectedAttrsIds = null);
 
     Task<Result<Category>> GetCategoryAsync(int categoryId);
 
@@ -35,6 +38,7 @@ public interface IProductsService
     Task<Result<Category>> GetCategoryById(int id);
 
     Task<Result<IEnumerable<Attribute>>> GetAllAttributes();
+
 
     Task<Result<Attribute>> GetAttributeById(int id);
 }

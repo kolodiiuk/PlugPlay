@@ -32,15 +32,13 @@ public class PlugPlayDbContext : IdentityDbContext<User, IdentityRole<int>, int>
 
     public DbSet<Review> Reviews { get; set; }
 
-    public DbSet<WishList> Wishlists { get; set; }
-
     public DbSet<UserAddress> UserAddresses { get; set; }
 
     public DbSet<User> Users { get; set; }
 
     public DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
 
-    public DbSet<WishList> WishLists { get; set; }
+    public DbSet<WishList> WishList { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

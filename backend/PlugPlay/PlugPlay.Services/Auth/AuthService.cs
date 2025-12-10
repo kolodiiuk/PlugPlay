@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -63,16 +64,34 @@ public class AuthService : IAuthService
                     result.Errors.Select(e => e.Description))}");
             }
 
-            var roleResult = await _userManager.AddToRoleAsync(user, user.Role.ToString());
-            if (!roleResult.Succeeded)
-            {
-                _logger.LogError("Failed to assign role {Role} to user {Email}. Errors: {Errors}",
-                    user.Role, user.Email, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+            const string sql = """
+                      ;WITH target_role AS (
+                          SELECT 
+                              r.Id AS role_id
+                          FROM 
+                              asp_net_roles r
+                          WHERE 
+                              R.normalized_name = UPPER('USER')
+                      )
 
-                return Result.Fail(
-                    $"Failed to assign role: {string.Join(", ",
-                        roleResult.Errors.Select(e => e.Description))}");
-            }
+                      INSERT INTO asp_net_user_roles (user_id, role_id)
+                      SELECT 
+                          {0} AS user_id,
+                          tr.role_id
+                      FROM 
+                          target_role tr
+                      WHERE
+                          tr.role_id IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1
+                              FROM asp_net_user_roles ur
+                              WHERE 
+                                  ur.user_id = {0}
+                                  AND ur.role_id = tr.role_id
+                          );
+                      """;
+            await _context.Database.ExecuteSqlInterpolatedAsync(FormattableStringFactory.Create(sql, user.Id));
+
 
             _logger.LogInformation("Successfully registered user with email: {Email}", user.Email);
 
