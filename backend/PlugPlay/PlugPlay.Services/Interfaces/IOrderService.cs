@@ -1,5 +1,6 @@
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
+using PlugPlay.Domain.Enums;
 using PlugPlay.Services.Ordering;
 using PlugPlay.Services.Payment;
 
@@ -17,11 +18,9 @@ public interface IOrderService
 
     Task<Result<LiqPayRefundResponse>> CancelOrderAsync(int orderId);
 
-    Task<Result> UpdateOrderStatusAsync(int orderId);
+    Task<Result> UpdateOrderStatusAsync(int orderId, OrderStatus newOrderStatus);
 
-    Task<Result> UpdatePaymentStatusAsync(int orderId);
+    Task<Result> UpdatePaymentStatusAsync(int orderId, PaymentStatus newPaymentStatus);
 
-    Task<Result> CancelOrderCashAsync(int orderId);
-
-    Task<Result<LiqPayRefundResponse>> CancelOrderCardAsync(int orderId);
+    Task<Result> CancelOrderAdminAsync(int orderId);
 }

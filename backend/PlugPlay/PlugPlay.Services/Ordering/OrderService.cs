@@ -7,6 +7,7 @@ using PlugPlay.Domain.Enums;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
+using PlugPlay.Services.Logging;
 using PlugPlay.Services.Payment;
 
 namespace PlugPlay.Services.Ordering;
@@ -22,6 +23,7 @@ public class OrderService : BaseService<OrderService>, IOrderService
     private static readonly EventId RefundPaymentFailureEvent = new(2009, "RefundPaymentFailure");
 
     private readonly IPaymentService _paymentService;
+
     private readonly ICartService _cartService;
 
     public OrderService(PlugPlayDbContext context, IPaymentService paymentService, ICartService cartService,
@@ -249,6 +251,7 @@ public class OrderService : BaseService<OrderService>, IOrderService
             }
 
             order.Status = OrderStatus.Cancelled;
+            order.UpdatedAt = DateTime.UtcNow;
             Context.Orders.Update(order);
             await Context.SaveChangesAsync();
 
@@ -292,24 +295,143 @@ public class OrderService : BaseService<OrderService>, IOrderService
         }
     }
 
-    public async Task<Result> UpdateOrderStatusAsync(int orderId)
+    public async Task<Result> UpdateOrderStatusAsync(int orderId, OrderStatus newStatus)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var order = await Context.Orders.FindAsync(orderId);
+            if (order is not null)
+            {
+                return await UpdateOrderStatus(newStatus, order);
+            }
+
+            return Result.Fail($"No order with id {orderId} is found");
+        }
+        catch (Exception e)
+        {
+            Log(LogLevel.Error, OrderServiceEventIds.UpdateOrderStatusError,
+                "Error updating order status for order {orderId}. Error: {e.Message}. Inner exception: {e.Inner}",
+                orderId, e.Message, e.InnerException?.Message ?? "");
+
+            return Result.Fail(e.Message);
+        }
+
+        async Task<Result> UpdateOrderStatus(OrderStatus orderStatus, Order order)
+        {
+            switch (orderStatus)
+            {
+                case OrderStatus.Created:
+                    return order.Status == OrderStatus.Created
+                        ? Result.Success()
+                        : Result.Fail("Invalid state transition");
+                case OrderStatus.Approved:
+                    if (order.Status == OrderStatus.Created)
+                    {
+                        order.Status = orderStatus;
+                        order.UpdatedAt = DateTime.UtcNow;
+                        Context.Orders.Update(order);
+                        await Context.SaveChangesAsync();
+
+                        return Result.Success();
+                    }
+                    else if (order.Status == OrderStatus.Approved)
+                    {
+                        return Result.Success();
+                    }
+                    else
+                    {
+                        return Result.Fail("Invalid state transition");
+                    }
+                case OrderStatus.Delivered:
+                    if (order.Status == OrderStatus.Approved)
+                    {
+                        order.Status = orderStatus;
+                        order.UpdatedAt = DateTime.UtcNow;
+                        Context.Orders.Update(order);
+                        await Context.SaveChangesAsync();
+
+                        return Result.Success();
+                    }
+                    else if (order.Status == OrderStatus.Delivered)
+                    {
+                        return Result.Success();
+                    }
+                    else if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Created)
+                    {
+                        return Result.Fail("Invalid state transition");
+                    }
+                    break;
+                case OrderStatus.Cancelled:
+                    return Result.Fail("Incorrect endpoint");
+                default:
+                    break;
+            }
+
+            return Result.Fail("Probably, collected");
+        }
     }
 
-    public async Task<Result> UpdatePaymentStatusAsync(int orderId)
+    public async Task<Result> UpdatePaymentStatusAsync(int orderId, PaymentStatus newPaymentStatus)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var order = await Context.Orders.FindAsync(orderId);
+            if (order is null)
+            {
+                return Result.Fail($"No order with id {orderId} is found");
+            }
+
+            if (order.PaymentMethod == PaymentMethod.Cash)
+            {
+                order.PaymentStatus = newPaymentStatus;
+                order.UpdatedAt = DateTime.UtcNow;
+                Context.Update(order);
+                await Context.SaveChangesAsync();
+            }
+            else
+            {
+                return Result.Fail("Payment status of order paid with card can't be changed manually");
+            }
+
+            return Result.Success();
+        }
+        catch (Exception e)
+        {
+            Log(LogLevel.Error, OrderServiceEventIds.UpdatePaymentStatusError,
+                "Error updating payment status for order {orderId}. Error: {e.Message}. Inner exception: {e.Inner}",
+                orderId, e.Message, e.InnerException?.Message ?? "");
+
+            return Result.Fail(e.Message);
+        }
     }
 
-    public async Task<Result> CancelOrderCashAsync(int orderId)
+    public async Task<Result> CancelOrderAdminAsync(int orderId)
     {
-        throw new NotImplementedException();
-    }
+        try
+        {
+            var order = await Context.Orders.FindAsync(orderId);
+            if (order is null)
+            {
+                return Result.Fail($"No order with id {orderId} is found");
+            }
 
-    public async Task<Result<LiqPayRefundResponse>> CancelOrderCardAsync(int orderId)
-    {
-        throw new NotImplementedException();
+            if (order.PaymentMethod == PaymentMethod.Cash)
+            {
+                return await CancelOrderCashAdminAsync(order);
+            }
+            else
+            {
+                return await CancelOrderCardAdminAsync(order);
+            }
+        }
+        catch (Exception e)
+        {
+            Log(LogLevel.Error, OrderServiceEventIds.OrderCancellationAdminError,
+                "Error canceling order {orderId} as admin. Error: {e.Message}",
+                orderId, e.Message);
+
+            return Result.Fail(e.Message + e.InnerException);
+        }
     }
 
     private async Task<List<OrderItem>> CreateOrderItems(IEnumerable<OrderItemDto> orderItemDtos, int orderId)
@@ -353,5 +475,71 @@ public class OrderService : BaseService<OrderService>, IOrderService
         await Context.SaveChangesAsync();
 
         return items;
+    }
+
+    private async Task<Result<LiqPayRefundResponse>> CancelOrderCardAdminAsync(Order order)
+    {
+        try
+        {
+            var stateTransitionNotValid = order.Status == OrderStatus.Cancelled
+                                          || order.Status == OrderStatus.Delivered;
+            if (stateTransitionNotValid)
+            {
+                return Result.Fail<LiqPayRefundResponse>($"Order with id {order.Id} can't be cancelled");
+            }
+
+            Result<LiqPayRefundResponse> result = new Result<LiqPayRefundResponse>(null, true, "");
+            if (order.PaymentMethod == PaymentMethod.Card && (order.PaymentStatus == PaymentStatus.TestPaid ||
+                                                              order.PaymentStatus == PaymentStatus.Paid))
+            {
+                result = await _paymentService.RefundPayment(order.Id);
+                result.OnSuccess(() =>
+                        Log(LogLevel.Information, RefundPaymentSuccessEvent, "Success refunding payment"))
+                    .OnFailure(() =>
+                        Log(LogLevel.Error, RefundPaymentFailureEvent, "Refund failed: {error}", result.Error));
+
+                if (result.Value.Result == "error")
+                {
+                    return Result.Fail<LiqPayRefundResponse>($"Error refunding: {result.Value.Status}");
+                }
+            }
+
+            order.Status = OrderStatus.Cancelled;
+            order.UpdatedAt = DateTime.UtcNow;
+            Context.Orders.Update(order);
+            await Context.SaveChangesAsync();
+
+            return result.Failure
+                ? Result.Fail<LiqPayRefundResponse>($"Payment refund failed. Reason: {result.Error}")
+                : Result.Success(result.Value);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<LiqPayRefundResponse>($"Error cancelling order: {e.Message}");
+        }
+    }
+
+    private async Task<Result> CancelOrderCashAdminAsync(Order order)
+    {
+        try
+        {
+            var stateTransitionNotValid = order.Status == OrderStatus.Cancelled
+                                          || order.Status == OrderStatus.Delivered;
+            if (stateTransitionNotValid)
+            {
+                return Result.Fail($"Order with id {order.Id} can't be cancelled");
+            }
+
+            order.Status = OrderStatus.Cancelled;
+            order.UpdatedAt = DateTime.UtcNow;
+            Context.Orders.Update(order);
+            await Context.SaveChangesAsync();
+
+            return Result.Success();
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<LiqPayRefundResponse>($"Error cancelling order: {e.Message}");
+        }
     }
 }
