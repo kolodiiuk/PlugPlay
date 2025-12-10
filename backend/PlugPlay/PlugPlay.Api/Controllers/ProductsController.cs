@@ -1,6 +1,3 @@
-using System.Net;
-using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -10,7 +7,6 @@ using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
 using PlugPlay.Services.Products;
-using Attribute = PlugPlay.Domain.Entities.Attribute;
 
 namespace PlugPlay.Api.Controllers;
 
@@ -22,8 +18,7 @@ public class ProductsController : ControllerBase
 
     private readonly ILogger<ProductsController> _logger;
 
-    public ProductsController(IProductsService productsService, ILogger<ProductsController> logger,
-        Cloudinary cloudinary)
+    public ProductsController(IProductsService productsService, ILogger<ProductsController> logger)
     {
         _productsService = productsService;
         _logger = logger;

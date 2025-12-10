@@ -5,57 +5,18 @@ using Microsoft.Extensions.Logging;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
+using PlugPlay.Services.Dto;
 using PlugPlay.Services.Interfaces;
 using Attribute = PlugPlay.Domain.Entities.Attribute;
 
 namespace PlugPlay.Services.Products;
 
-public class ProductsService : BaseService<ProductsService>, IProductsService
+public partial class ProductsService : BaseService<ProductsService>, IProductsService
 {
     public ProductsService(PlugPlayDbContext context, ILogger<ProductsService> logger) : base(context, logger)
     {
     }
 
-    public async Task<Result> AddProduct(AddProductDto req)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<Result> AddImageAsync(int productId, string uploadResultUrl)
-    {
-        Log(LogLevel.Information, new EventId(2000, "AddingProductImage"), "Adding image for product {ProductId}",
-            productId);
-        try
-        {
-            var product = await Context.Products.FindAsync(productId);
-            if (product is null)
-            {
-                Log(LogLevel.Warning, new EventId(2001, "ProductNotFoundWarning"),
-                    "Product with ID {ProductId} not found", productId);
-                return Result.Fail("No such product");
-            }
-
-            var image = new ProductImage
-            {
-                ImageUrl = uploadResultUrl,
-                ProductId = productId
-            };
-            Context.ProductImages.Add(image);
-            await Context.SaveChangesAsync();
-
-            Log(LogLevel.Information, new EventId(2000, "ProductImageAddedSuccess"),
-                "Successfully added image for product {ProductId}", productId);
-
-            return Result.Success();
-        }
-        catch (Exception e)
-        {
-            Log(LogLevel.Error, new EventId(2001, "FailedToAddProductImageError"),
-                "Failed to add image for product {ProductId}. Error: {error}", productId, e.Message);
-
-            return Result.Fail($"{e.Message}");
-        }
-    }
 
     public async Task<IEnumerable<Product>> GetAllProductsAsync()
     {
@@ -149,7 +110,6 @@ public class ProductsService : BaseService<ProductsService>, IProductsService
         }
     }
 
-
     public async Task<Result<IEnumerable<Product>>> SearchProductsAsync(ProductSearchRequest req)
     {
         Log(LogLevel.Information, new EventId(2012, "SearchProductsStart"), "Fetching available products");
@@ -228,25 +188,6 @@ public class ProductsService : BaseService<ProductsService>, IProductsService
         }
     }
 
-    public async Task<Result> ChangeProduct(ChangeProductDto req)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<Result> DeleteProduct(int prodId)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<Result<IEnumerable<Category>>> GetAllCategories()
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<Result<Category>> GetCategoryById(int id)
-    {
-        throw new NotImplementedException();
-    }
 
     public async Task<Result<Category>> GetCategoryAsync(int categoryId)
     {
@@ -386,14 +327,5 @@ public class ProductsService : BaseService<ProductsService>, IProductsService
             return Result.Fail<IEnumerable<Attribute>>(e.Message);
         }
     }
-
-    public async Task<Result<IEnumerable<Attribute>>> GetAllAttributes()
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<Result<Attribute>> GetAttributeById(int id)
-    {
-        throw new NotImplementedException();
-    }
 }
+
