@@ -1,6 +1,19 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import {skipToken} from '@reduxjs/toolkit/query';
 import WishlistItem from './WishlistItem';
-import { mockWishlistProducts, WishlistProduct } from '../../data/mockWishlistData';
+import {WishlistProduct } from '../../data/mockWishlistData';
+import { WishList } from '../../models/WishList';
+import {storage} from '../../utils/StorageService';
+import {useGetUserByTokenQuery} from '../../api/userInfoApi.ts'
+import {useGetAllProductsQuery} from '../../api/productsApi.ts';
+import {
+    useAddToWishlistMutation,
+    useGetWishlistItemQuery,
+    useIsInWishlistQuery,
+    useGetUserWishlistQuery,
+    useRemoveWishlistItemMutation,
+    useClearWishlistMutation
+} from '../../api/wishlistApi';
 
 interface WishlistModalProps {
     isOpen: boolean;
@@ -8,14 +21,40 @@ interface WishlistModalProps {
 }
 
 export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
-    const [wishlistItems, setWishlistItems] = useState<WishlistProduct[]>(mockWishlistProducts);
+    const token = storage.useAccessToken();
+    // const {
+    //     data: fetchedUser,
+    //     isLoading: isLoadingUser,
+    //     isError: isUserError
+    // } = useGetUserByTokenQuery(token ?? skipToken);
 
-    const handleRemoveItem = (id: number) => {
-        setWishlistItems(wishlistItems.filter(item => item.id !== id));
+    const {data: wishlistItems, isLoading, isError, refetch} = useGetUserWishlistQuery();
+    const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
+
+    const sortedItems = useMemo(
+        () => [...(wishlistItems ?? [])].sort((a, b) => a.id - b.id),
+        [wishlistItems]
+    );
+
+    const enrichedItems = useMemo(() =>
+        sortedItems.map(item => ({
+            ...item,
+            product: products?.find(p => p.id === item.productId),
+        })),
+        [sortedItems, products]
+    );
+
+    const [removeItem] = useRemoveWishlistItemMutation();
+    const [clear] = useClearWishlistMutation();
+
+    const handleRemoveItem = async (id: number) => {
+        await removeItem(id);
+        refetch();
     };
 
-    const handleClearAll = () => {
-        setWishlistItems([]);
+    const handleClearAll = async () => {
+        await clear();
+        refetch();
     };
 
     if (!isOpen) return null;
@@ -33,7 +72,7 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">Wishlist</h2>
                             <p className="text-sm text-gray-500 mt-0.5">
-                                {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'}
+                                {enrichedItems.length} {enrichedItems?.length === 1 ? 'item' : 'items'}
                             </p>
                         </div>
                         <button
@@ -45,23 +84,24 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
-                    {wishlistItems.length === 0 ? (
+                    {enrichedItems.length === 0 ? (
                         <div className="text-center py-12">
                             <p className="text-gray-500">Your wishlist is empty</p>
                         </div>
                     ) : (
                         <div>
-                            {wishlistItems.map((product) => (
+                            {enrichedItems.map((item) => (
                                 <WishlistItem
-                                    key={product.id}
-                                    product={product}
+                                    key={item.id}
+                                    itemId={item.id}
+                                    product={item.product}
                                     onRemove={handleRemoveItem}
                                 />
                             ))}
                         </div>
                     )}
                 </div>
-            </div>
+            </div>;
         </>
     );
 }

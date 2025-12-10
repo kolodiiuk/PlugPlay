@@ -1,12 +1,14 @@
 import { ShoppingCart, X } from 'lucide-react';
-import { WishlistProduct } from '../../data/mockWishlistData';
+import { Product } from '../../models/Product';
+
 
 interface WishlistItemProps {
-    product: WishlistProduct;
+    itemId: number;
+    product: Product | undefined;
     onRemove: (id: number) => void;
 }
 
-export default function WishlistItem({ product, onRemove }: WishlistItemProps) {
+export default function WishlistItem({ itemId, product, onRemove }: WishlistItemProps) {
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('uk-UA', {
             minimumFractionDigits: 2,
@@ -17,7 +19,7 @@ export default function WishlistItem({ product, onRemove }: WishlistItemProps) {
     return (
         <div className="relative bg-white rounded-lg p-4 mb-3">
             <button
-                onClick={() => onRemove(product.id)}
+                onClick={() => onRemove(itemId)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
                 aria-label="Remove from wishlist"
             >
@@ -27,15 +29,15 @@ export default function WishlistItem({ product, onRemove }: WishlistItemProps) {
             <div className="flex gap-4 mb-4">
                 <div
                     className="w-20 h-20 rounded-lg flex-shrink-0"
-                    style={{ backgroundColor: product.imageColor }}
+                    //style={{ backgroundColor: product.imageColor }}
                 />
 
                 <div className="flex-1">
                     <h3 className="text-base font-medium text-gray-900 mb-1">
-                        {product.name}
+                        {product?.name}
                     </h3>
                     <p className="text-lg font-semibold text-gray-900">
-                        ₴{formatPrice(product.price)}
+                        ₴{formatPrice(product?.price ?? 0)}
                     </p>
                 </div>
             </div>
