@@ -24,14 +24,15 @@ interface WishlistModalProps {
 
 export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
     const navigate = useNavigate();
-    const {isCartOpen, closeCart} = useCartContext();
+    const {isCartOpen} = useCartContext();
 
+    const isAuthenticated = !!storage.getAccessToken();
     const {
         data: wishListItems,
         isLoading: isLoadingWishList,
         isError: isWishListError
     } = useGetUserWishlistQuery(undefined, {
-        skip: !storage.getAccessToken,
+        skip: !isAuthenticated,
     });
 
     const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
@@ -69,24 +70,11 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
         onClose();
     };
 
-    const reloadIfNeeded = (productId?: number) => {
-        console.log(location.pathname);
-        console.log((`/product/${productId}`));
-
-        if (location.pathname === ("/")
-            || (!productId && location.pathname.startsWith("/product/"))
-            || (productId && location.pathname === (`/product/${productId}`))) {
-            console.log("reload");
-            window.location.reload();
-        }
-    };
-
     const isError = isWishListError || isProductsError;
     const isLoading = isLoadingWishList || isLoadingProducts;
-    if (!isOpen || isError || isLoading) return null;
 
-    if(isCartOpen) {
-        closeCart();
+    if (!isOpen || isError || isLoading || !isAuthenticated || isCartOpen) {
+        return null;
     }
 
     return (

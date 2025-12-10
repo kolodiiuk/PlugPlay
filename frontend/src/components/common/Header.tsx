@@ -99,12 +99,13 @@ export default function Header({ onCategorySelect }: HeaderProps) {
           </div>
 
           <div className="flex items-center space-x-4">
-            <button
+            {user && (<button
               onClick={() => setIsWishlistOpen(true)}
               className="p-2 text-gray-700 hover:text-black transition-colors"
             >
               <Heart className="w-6 h-6" />
-            </button>
+            </button>)
+            }
             <button
               onClick={openCart}
               className="p-2 text-gray-700 hover:text-black transition-colors"

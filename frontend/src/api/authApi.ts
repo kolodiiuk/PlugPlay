@@ -29,6 +29,7 @@ export const authApi = baseApi.injectEndpoints({
         method: 'POST',
         body: credentials,
       }),
+      invalidatesTags: ["Wishlist"]
     }),
     register: builder.mutation<void, RegisterRequest>({
       query: (userData) => ({
@@ -43,6 +44,7 @@ export const authApi = baseApi.injectEndpoints({
         method: 'POST',
         body: {refreshToken},
       }),
+      invalidatesTags: ["Wishlist"]
     }),
     verify: builder.query<User, void>({
       query: () => ({
