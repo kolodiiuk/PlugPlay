@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import {skipToken} from '@reduxjs/toolkit/query';
+import { Product } from '../../models/Product.ts';
 import WishlistItem from './WishlistItem';
 import {WishlistProduct } from '../../data/mockWishlistData';
 import { WishList } from '../../models/WishList';
@@ -16,6 +17,8 @@ import {
     useClearWishlistMutation
 } from '../../api/wishlistApi';
 import { useCartContext } from '../../context/CartContext.tsx';
+import { useAddToCartMutation } from '../../api/cartApi.ts';
+import { cartService } from '../../features/cart/CartService.ts';
 
 interface WishlistModalProps {
     isOpen: boolean;
@@ -24,7 +27,15 @@ interface WishlistModalProps {
 
 export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
     const navigate = useNavigate();
-    const {isCartOpen} = useCartContext();
+    const {isCartOpen, openCart} = useCartContext();
+
+    const token = storage.useAccessToken();
+      const {
+        data: fetchedUser,
+        isLoading: isLoadingUser,
+        isError: isUserError
+      } = useGetUserByTokenQuery(token ?? skipToken);
+    const user = token ? fetchedUser : undefined;
 
     const isAuthenticated = !!storage.getAccessToken();
     const {
@@ -53,13 +64,27 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
     const [removeItem] = useRemoveWishlistItemMutation();
     const [clear] = useClearWishlistMutation();
 
-    const handleRemoveItem = async (id: number, productId? : number) => {
+    const {cartItems, isLoading: isLoadingCart, isError: isCartError, refetch: updateCart} = cartService.useCart(user?.id);
+    const addToCart = cartService.useAddToCart(user?.id);
+
+    const handleRemoveItem = async (id: number) => {
         await removeItem(id);
     };
 
     const handleClearAll = async () => {
         await clear();
     };
+
+    const handleBuy = (product: Product) => {
+        handleAddToCart(product);
+        close();
+        openCart();
+    }
+
+    const handleAddToCart = async (product: Product) => {
+        await addToCart(product, 1);
+        updateCart();
+    }
 
     const handleNavigate = (productId?: number) => {
         if (!productId) {
@@ -70,8 +95,8 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
         onClose();
     };
 
-    const isError = isWishListError || isProductsError;
-    const isLoading = isLoadingWishList || isLoadingProducts;
+    const isError = isWishListError || isProductsError || isCartError || isUserError;
+    const isLoading = isLoadingWishList || isLoadingProducts || isLoadingCart || isLoadingUser;
 
     if (!isOpen || isError || isLoading || !isAuthenticated || isCartOpen) {
         return null;
@@ -113,8 +138,11 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
                                     key={item.id}
                                     itemId={item.id}
                                     product={item.product}
+                                    canAddToCart = {!cartItems.some(ci => ci.productId === item?.product?.id)}
                                     onRemove={handleRemoveItem}
                                     onImageClick={handleNavigate}
+                                    onAddToCart={handleAddToCart}
+                                    onBuy={handleBuy}
                                 />
                             ))}
                         </div>

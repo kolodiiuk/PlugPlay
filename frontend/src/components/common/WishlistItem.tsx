@@ -4,11 +4,14 @@ import { Product } from '../../models/Product';
 interface WishlistItemProps {
     itemId: number;
     product: Product | undefined;
-    onRemove: (id: number, productId? : number) => void;
+    canAddToCart: boolean;
+    onRemove: (id: number) => void;
     onImageClick: (productId: number | undefined) => void;
+    onAddToCart: (product: Product) => void;
+    onBuy: (product: Product) => void;
 }
 
-export default function WishlistItem({ itemId, product, onRemove, onImageClick }: WishlistItemProps) {
+export default function WishlistItem({ itemId, product, canAddToCart, onRemove, onImageClick, onAddToCart, onBuy}: WishlistItemProps) {
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('uk-UA', {
             minimumFractionDigits: 2,
@@ -19,7 +22,7 @@ export default function WishlistItem({ itemId, product, onRemove, onImageClick }
     return (
         <div className="relative bg-white rounded-lg p-4 mb-3">
             <button
-                onClick={() => onRemove(itemId, product?.id)}
+                onClick={() => onRemove(itemId)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
                 aria-label="Remove from wishlist"
             >
@@ -49,11 +52,27 @@ export default function WishlistItem({ itemId, product, onRemove, onImageClick }
             </div>
 
             <div className="flex gap-3">
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700">
-                    <ShoppingCart className="w-4 h-4" />
+                <button
+                    onClick={() => {
+                        if (product) {
+                            onAddToCart(product)
+                        }
+                    }}
+                    disabled={!canAddToCart}
+                    className="w-full bg-white text-gray-900 px-6 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors font-semibold
+                    disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
                     Add to Cart
                 </button>
-                <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                <button
+                    onClick={() => {
+                        if (product) {
+                            onBuy(product)
+                        }
+                    }}
+                    disabled={!canAddToCart}
+                    className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2 
+                    disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    <ShoppingCart className="w-4 h-4" />
                     Buy
                 </button>
             </div>
