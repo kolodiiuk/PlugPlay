@@ -2,11 +2,11 @@ package com.plugplay.plugplaymobile.presentation.product_detail
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -21,39 +21,35 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.plugplay.plugplaymobile.domain.model.Item
 import com.plugplay.plugplaymobile.R
+import com.plugplay.plugplaymobile.domain.model.AttributeGroup
+import com.plugplay.plugplaymobile.domain.model.Item
+import com.plugplay.plugplaymobile.domain.model.Review
 import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
 import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
 import java.text.NumberFormat
 import java.util.Locale
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemDetailScreen(
+    itemId: String,
     navController: NavController,
-    viewModel: ItemDetailViewModel = hiltViewModel(),
     onNavigateToCheckout: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    viewModel: ItemDetailViewModel = hiltViewModel(),
     cartViewModel: CartViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
-
     val item = state.item
-
     var isCartOpen by remember { mutableStateOf(false) }
 
     val isInCart = remember(cartState.cartItems, item) {
@@ -73,17 +69,15 @@ fun ItemDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Plug & Play") },
+                title = { Text("Plug & Play", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                }, actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Outlined.Search, contentDescription = "Пошук")
-                    }
+                },
+                actions = {
                     IconButton(onClick = onNavigateToProfile) {
-                        Icon(Icons.Outlined.Person, contentDescription = "Профіль")
+                        Icon(Icons.Outlined.Person, contentDescription = "Profile")
                     }
                     IconButton(onClick = { isCartOpen = true }) {
                         BadgedBox(
@@ -92,47 +86,178 @@ fun ItemDetailScreen(
                                     Badge(
                                         modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
                                         containerColor = MaterialTheme.colorScheme.error
-                                    ) {
-                                        Text(cartItemsCount.toString())
-                                    }
+                                    ) { Text(cartItemsCount.toString()) }
                                 }
                             }
                         ) {
-                            Icon(Icons.Outlined.ShoppingCart, contentDescription = "Корзина")
+                            Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart")
                         }
                     }
-                })
-        }) { innerPadding ->
-        Box(
+                }
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(Color.White),
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             when {
                 state.isLoading -> {
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
-                }
-
-                state.error != null -> {
-                    Text(
-                        text = state.error.toString(),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(16.dp)
-                    )
-                }
-
-                state.item != null -> {
-                    ItemDetailContent(
-                        item = state.item!!,
-                        isInCart = isInCart,
-                        onAddToCart = { cartViewModel.addToCart(state.item!!.id, 1) },
-                        onBuyClick = {
-                            cartViewModel.addToCart(state.item!!.id, 1)
-                            onNavigateToCheckout()
+                    item {
+                        Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
                         }
-                    )
+                    }
+                }
+                state.error != null -> {
+                    item {
+                        Text(
+                            text = state.error.toString(),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+                item != null -> {
+                    // 1. Images
+                    item { ImagePager(item.imageUrls) }
+
+                    // 2. Title & Price
+                    item {
+                        Column(Modifier.padding(16.dp)) {
+                            TitleAndPrice(item)
+                            Spacer(Modifier.height(24.dp))
+                        }
+                    }
+
+                    // 3. Actions
+                    item {
+                        ActionButtons(
+                            item = item,
+                            isInCart = isInCart,
+                            onAddToCart = { cartViewModel.addToCart(item.id, 1) },
+                            onBuyClick = {
+                                cartViewModel.addToCart(item.id, 1)
+                                isCartOpen = true
+                            }
+                        )
+                    }
+
+                    // 4. Info Section (Delivery/Warranty)
+                    item { InfoSection() }
+
+                    // 5. Description
+                    item { DescriptionSection(item) }
+
+                    // 6. [NEW] Attributes
+                    if (state.attributes.isNotEmpty()) {
+                        item {
+                            ProductAttributesSection(attributes = state.attributes)
+                        }
+                    }
+
+                    // 7. [NEW] Reviews
+                    item {
+                        ProductReviewsSection(reviews = item.reviews)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// [NEW] Component for attributes
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ProductAttributesSection(attributes: List<AttributeGroup>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // Контейнер с серым фоном
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF4F7F8), RoundedCornerShape(12.dp))
+                .padding(16.dp)
+        ) {
+            // [ИЗМЕНЕНО] Используем FlowRow для размещения ГРУПП атрибутов
+            // Теперь группы ("Color", "Weight" и т.д.) будут вставать рядом друг с другом
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp), // Большой отступ между группами
+                verticalArrangement = Arrangement.spacedBy(16.dp)    // Отступ между рядами групп
+            ) {
+                attributes.forEach { group ->
+                    // Блок одной группы (Название + Значения)
+                    Column {
+                        // Название группы (Color)
+                        Text(
+                            text = group.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.DarkGray,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+
+                        // Значения группы (White, Black) - тоже FlowRow
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            group.values.forEach { value ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White,
+                                    border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                                    shadowElevation = 0.dp
+                                ) {
+                                    Text(
+                                        text = value,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+// [NEW] Component for reviews
+@Composable
+fun ProductReviewsSection(reviews: List<Review>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .background(Color.White)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Reviews (${reviews.size})",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (reviews.isEmpty()) {
+            Text("No reviews yet.", color = Color.Gray)
+        } else {
+            reviews.forEach { review ->
+                ReviewItem(review)
+                if (review != reviews.last()) {
+                    Divider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 12.dp))
                 }
             }
         }
@@ -140,53 +265,66 @@ fun ItemDetailScreen(
 }
 
 @Composable
-fun ItemDetailContent(
-    item: Item,
-    isInCart: Boolean,
-    onAddToCart: () -> Unit,
-    onBuyClick: () -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF4F4F4)),
-        contentPadding = PaddingValues(bottom = 32.dp)
-    ) {
-        item {
-            ImagePager(item.imageUrls.firstOrNull() ?: "")
-        }
-
-        item {
-            Column(
-                Modifier
-                    .background(Color.White)
-                    .padding(16.dp)
-            ) {
-                TitleAndPrice(item)
-                Spacer(Modifier.height(24.dp))
+fun ReviewItem(review: Review) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Avatar placeholder
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = review.userName.take(1).uppercase(),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = review.userName,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
-        }
-
-        item {
-            ActionButtons(
-                item = item,
-                isInCart = isInCart,
-                onAddToCart = onAddToCart,
-                onBuyClick = onBuyClick
+            Text(
+                text = review.date,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
             )
         }
 
-        item {
-            InfoSection()
+        Row(modifier = Modifier.padding(vertical = 6.dp)) {
+            repeat(5) { index ->
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = if (index < review.rating) Color(0xFFFFC107) else Color.Gray.copy(alpha = 0.3f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
 
-        item {
-            DescriptionSection(item)
+        if (review.comment.isNotBlank()) {
+            Text(
+                text = review.comment,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }
 
-
+// ... Existing components (ImagePager, TitleAndPrice, InfoSection, DescriptionSection, ActionButtons, InfoRow) remain unchanged ...
+// Ensure you copy them from the previous version of ItemDetailScreen.kt
 @Composable
 fun ActionButtons(
     item: Item,
@@ -200,18 +338,33 @@ fun ActionButtons(
             .background(Color.White)
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 8.dp)
     ) {
+        // Buy Button
         Button(
             onClick = onBuyClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
             shape = RoundedCornerShape(8.dp),
-            enabled = item.isAvailable
+            enabled = item.isAvailable,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF))
         ) {
-            Text("Купити", fontWeight = FontWeight.Bold)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Outlined.ShoppingCart,
+                    contentDescription = "Buy",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Buy", fontWeight = FontWeight.Bold, color = Color.White)
+            }
         }
         Spacer(Modifier.height(8.dp))
 
+        // Add to Cart Button
         OutlinedButton(
             onClick = onAddToCart,
             modifier = Modifier
@@ -224,156 +377,72 @@ fun ActionButtons(
                 contentColor = if (isInCart) Color.Gray else MaterialTheme.colorScheme.onSurface,
                 disabledContentColor = Color.Gray
             ),
-            border = BorderStroke(
+            border = androidx.compose.foundation.BorderStroke(
                 1.dp,
                 if (isInCart) Color(0xFFE0E0E0) else Color.Gray.copy(alpha = 0.5f)
             )
         ) {
-            Text(if (isInCart) "Вже в корзині" else "Додати в корзину", fontWeight = FontWeight.Bold)
+            Text(if (isInCart) "Already in cart" else "Add to cart", fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-fun ImagePager(imageUrl: String) {
+fun ImagePager(imageUrls: List<String>) {
+    val mainImageUrl = imageUrls.firstOrNull() ?: "https://example.com/placeholder.jpg"
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(400.dp)
-            .background(Color.White),
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "Зображення товару",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            error = painterResource(id = R.drawable.ic_launcher_foreground)
-        )
-
-        IconButton(
-            onClick = { }, modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.LightGray)
         ) {
-            Icon(Icons.Outlined.FavoriteBorder, contentDescription = "В обране")
+            AsyncImage(
+                model = mainImageUrl,
+                contentDescription = "Product Image",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                error = painterResource(id = R.drawable.ic_launcher_foreground)
+            )
         }
     }
 }
 
 @Composable
 fun TitleAndPrice(item: Item) {
-    val currencyFormat = NumberFormat.getCurrencyInstance(Locale("uk", "UA"))
+    val formattedNumber = remember(item.price) {
+        val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+        format.format(item.price) + " ₴"
+    }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Text(text = item.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(8.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
         Text(
-            text = item.name,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth()
+            text = " ${String.format("%.1f", item.averageRating)} (${item.reviewCount} reviews)",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
         )
-
-        Spacer(Modifier.height(8.dp))
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                Icons.Default.CheckCircle,
-                contentDescription = "Наявність",
-                tint = Color.Green,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = if (item.isAvailable) "Є в наявності" else "Немає в наявності",
-                color = Color.Green,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = currencyFormat.format(item.price),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
     }
-}
-
-@Composable
-fun VariantSelectors() {
-    var selectedColor by remember { mutableStateOf("Чорний") }
-    var selectedStorage by remember { mutableStateOf("256GB") }
-
-    Column {
-        Text("Колір: $selectedColor", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black)
-                    .border(
-                        BorderStroke(
-                            2.dp,
-                            if (selectedColor == "Чорний") MaterialTheme.colorScheme.primary else Color.Transparent
-                        ),
-                        CircleShape
-                    )
-                    .clickable { selectedColor = "Чорний" }
-            )
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color.Blue)
-                    .border(
-                        BorderStroke(
-                            2.dp,
-                            if (selectedColor == "Синій") MaterialTheme.colorScheme.primary else Color.Transparent
-                        ),
-                        CircleShape
-                    )
-                    .clickable { selectedColor = "Синій" }
-            )
-        }
+    Spacer(Modifier.height(16.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.Green, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(text = if (item.isAvailable) "In stock" else "Not in stock", color = Color.Green, fontWeight = FontWeight.SemiBold)
     }
-
-    Spacer(Modifier.height(24.dp))
-
-    Column {
-        Text("Пам'ять:", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("256GB", "512GB", "1TB").forEach { storage ->
-                OutlinedButton(
-                    onClick = { selectedStorage = storage },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (selectedStorage == storage) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        if (selectedStorage == storage) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Text(storage, fontWeight = if (selectedStorage == storage) FontWeight.Bold else FontWeight.Normal)
-                }
-            }
-        }
-    }
+    Spacer(Modifier.height(16.dp))
+    Text(text = formattedNumber, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 }
 
 @Composable
@@ -385,21 +454,31 @@ fun InfoSection() {
             .background(Color.White)
             .padding(16.dp)
     ) {
-        Text("Доставка та гарантія", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Delivery and warranty", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-
-        InfoRow(Icons.Outlined.LocalShipping, "Швидка доставка", "Відправка в день замовлення")
+        InfoRow(Icons.Outlined.LocalShipping, "Fast delivery", "Delivery to Kyiv on the next day")
         Divider(Modifier.padding(vertical = 8.dp))
-        InfoRow(Icons.Outlined.Shield, "Гарантія 2 роки", "Офіційна гарантія від виробника")
+        InfoRow(Icons.Outlined.Shield, "1 year warranty", "Official manufacturer warranty")
         Divider(Modifier.padding(vertical = 8.dp))
-        InfoRow(Icons.Outlined.Replay, "Повернення 14 днів", "Можливість повернути товар")
+        InfoRow(Icons.Outlined.Replay, "Return within 14 days", "Ability to return the product")
+        Divider(Modifier.padding(vertical = 8.dp))
+        InfoRow(Icons.Outlined.Archive, "Safe packaging", "Reliable protection during delivery")
     }
 }
 
 @Composable
 fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxSize())
+        }
         Spacer(Modifier.width(16.dp))
         Column {
             Text(title, fontWeight = FontWeight.SemiBold)
@@ -417,12 +496,8 @@ fun DescriptionSection(item: Item) {
             .background(Color.White)
             .padding(16.dp)
     ) {
-        Text(
-            "Опис товару", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold
-        )
+        Text("Description", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-        Text(
-            text = item.description, style = MaterialTheme.typography.bodyMedium
-        )
+        Text(text = item.description, style = MaterialTheme.typography.bodyMedium)
     }
 }
