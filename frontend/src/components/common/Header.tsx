@@ -1,13 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Search, LogOut } from 'lucide-react';
+import { ShoppingCart, User, Search, LogOut, Heart, Menu } from 'lucide-react';
 import logoUrl from '../../../assets/logo.svg';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
-import { Menu } from 'lucide-react';
 import CategoriesSidebar from "../products/CategoriesSidebar.tsx";
 import { useCartContext } from '../../context/CartContext.tsx';
 import { useAppDispatch, useAppSelector } from '../../app/configureStore';
 import { setSearchQuery } from '../../app/slices/filterSlice';
+import WishlistModal from './WishlistModal.tsx';
 
 interface HeaderProps {
   onCategorySelect: (categoryId: number | null) => void;
@@ -21,6 +21,7 @@ export default function Header({ onCategorySelect }: HeaderProps) {
   const [searchQuery, setSearchQueryLocal] = useState(reduxSearchQuery);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [ignoreReduxSync, setIgnoreReduxSync] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
   const { openCart, closeCart } = useCartContext();
 
@@ -98,6 +99,13 @@ export default function Header({ onCategorySelect }: HeaderProps) {
           </div>
 
           <div className="flex items-center space-x-4">
+            {user && (<button
+              onClick={() => setIsWishlistOpen(true)}
+              className="p-2 text-gray-700 hover:text-black transition-colors"
+            >
+              <Heart className="w-6 h-6" />
+            </button>)
+            }
             <button
               onClick={openCart}
               className="p-2 text-gray-700 hover:text-black transition-colors"
@@ -130,6 +138,7 @@ export default function Header({ onCategorySelect }: HeaderProps) {
           </div>
         </div>
       </div>
+      <WishlistModal isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} />
     </header>
   );
 }

@@ -1,0 +1,148 @@
+import {useMemo } from 'react';
+import {skipToken} from '@reduxjs/toolkit/query';
+import { Product } from '../../models/Product.ts';
+import WishlistItem from './WishlistItem';
+import {storage} from '../../utils/StorageService';
+import {useGetUserByTokenQuery} from '../../api/userInfoApi.ts'
+import {useGetAllProductsQuery} from '../../api/productsApi.ts';
+import {useNavigate} from 'react-router-dom';
+import {
+    useGetUserWishlistQuery,
+    useRemoveWishlistItemMutation,
+    useClearWishlistMutation
+} from '../../api/wishlistApi';
+import { useCartContext } from '../../context/CartContext.tsx';
+import { cartService } from '../../features/cart/CartService.ts';
+
+interface WishlistModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
+    const navigate = useNavigate();
+    const {isCartOpen, openCart} = useCartContext();
+
+    const token = storage.useAccessToken();
+      const {
+        data: fetchedUser,
+        isLoading: isLoadingUser,
+        isError: isUserError
+      } = useGetUserByTokenQuery(token ?? skipToken);
+    const user = token ? fetchedUser : undefined;
+
+    const isAuthenticated = !!storage.getAccessToken();
+    const {
+        data: wishListItems,
+        isLoading: isLoadingWishList,
+        isError: isWishListError
+    } = useGetUserWishlistQuery(undefined, {
+        skip: !isAuthenticated,
+    });
+
+    const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
+
+    const sortedItems = useMemo(
+        () => [...(wishListItems ?? [])].sort((a, b) => a.id - b.id),
+        [wishListItems]
+    );
+
+    const enrichedItems = useMemo(() =>
+        sortedItems.map(item => ({
+            ...item,
+            product: products?.find(p => p.id === item.productId),
+        })),
+        [sortedItems, products]
+    );
+
+    const [removeItem] = useRemoveWishlistItemMutation();
+    const [clear] = useClearWishlistMutation();
+
+    const {cartItems, isLoading: isLoadingCart, isError: isCartError} = cartService.useCart(user?.id);
+    const addToCart = cartService.useAddToCart(user?.id);
+
+    const handleRemoveItem = async (id: number) => {
+        await removeItem(id);
+    };
+
+    const handleClearAll = async () => {
+        await clear();
+    };
+
+    const handleBuy = (product: Product) => {
+        handleAddToCart(product);
+        close();
+        openCart();
+    }
+
+    const handleAddToCart = async (product: Product) => {
+        await addToCart(product, 1);
+    }
+
+    const handleNavigate = (productId?: number) => {
+        if (!productId) {
+            return;
+        }
+
+        navigate(`/product/${productId}`);
+        onClose();
+    };
+
+    const isError = isWishListError || isProductsError || isCartError || isUserError;
+    const isLoading = isLoadingWishList || isLoadingProducts || isLoadingCart || isLoadingUser;
+
+    if (!isOpen || isError || isLoading || !isAuthenticated || isCartOpen) {
+        return null;
+    }
+
+    return (
+        <>
+            <div
+                className="fixed inset-0 z-40 animate-fadeIn"
+                onClick={onClose}
+            />
+
+            <div className="fixed top-16 right-64 w-full max-w-[28rem] bg-white rounded-lg shadow-2xl z-50 max-h-[calc(100vh-5rem)] flex flex-col animate-slideDown">
+                <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">Wishlist</h2>
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                {enrichedItems.length} {enrichedItems?.length === 1 ? 'item' : 'items'}
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleClearAll}
+                            className="text-red-500 hover:text-red-600 font-medium text-sm transition-colors"
+                        >
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                    {enrichedItems.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-gray-500">Your wishlist is empty</p>
+                        </div>
+                    ) : (
+                        <div>
+                            {enrichedItems.map((item) => (
+                                <WishlistItem
+                                    key={item.id}
+                                    itemId={item.id}
+                                    product={item.product}
+                                    isInCart = {cartItems.some(ci => ci.productId === item?.product?.id)}
+                                    isOutOfStock = {!(item?.product?.stockQuantity)}
+                                    onRemove={handleRemoveItem}
+                                    onImageClick={handleNavigate}
+                                    onAddToCart={handleAddToCart}
+                                    onBuy={handleBuy}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>;
+        </>
+    );
+}

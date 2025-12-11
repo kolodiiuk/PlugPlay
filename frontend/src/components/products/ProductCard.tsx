@@ -10,6 +10,7 @@ interface ProductCardProps {
   image: string;
   badge?: 'NEW' | 'SALE';
   isFavorite: boolean;
+  canAddToFavorite: boolean;
   onToggleFavorite: (id: number) => void;
   onClick?: (id: number) => void;
 }
@@ -22,6 +23,7 @@ const ProductCard = ({
                        image,
                        badge,
                        isFavorite,
+                       canAddToFavorite,
                        onToggleFavorite,
                        onClick
                      }: ProductCardProps) => {
@@ -68,7 +70,7 @@ const ProductCard = ({
           </div>
         )}
 
-        <button
+        {canAddToFavorite && (<button
           onClick={(e) => {
             e.stopPropagation();
             onToggleFavorite(id);
@@ -80,7 +82,8 @@ const ProductCard = ({
           }`}
         >
           <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'}/>
-        </button>
+        </button>)
+        }
       </div>
 
       <div className="p-4">
