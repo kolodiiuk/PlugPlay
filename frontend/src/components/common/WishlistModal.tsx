@@ -1,23 +1,17 @@
-import { useState, useMemo } from 'react';
+import {useMemo } from 'react';
 import {skipToken} from '@reduxjs/toolkit/query';
 import { Product } from '../../models/Product.ts';
 import WishlistItem from './WishlistItem';
-import {WishlistProduct } from '../../data/mockWishlistData';
-import { WishList } from '../../models/WishList';
 import {storage} from '../../utils/StorageService';
 import {useGetUserByTokenQuery} from '../../api/userInfoApi.ts'
 import {useGetAllProductsQuery} from '../../api/productsApi.ts';
-import {useNavigate, useLocation} from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import {
-    useAddToWishlistMutation,
-    useGetWishlistItemQuery,
-    useIsInWishlistQuery,
     useGetUserWishlistQuery,
     useRemoveWishlistItemMutation,
     useClearWishlistMutation
 } from '../../api/wishlistApi';
 import { useCartContext } from '../../context/CartContext.tsx';
-import { useAddToCartMutation } from '../../api/cartApi.ts';
 import { cartService } from '../../features/cart/CartService.ts';
 
 interface WishlistModalProps {
@@ -64,7 +58,7 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
     const [removeItem] = useRemoveWishlistItemMutation();
     const [clear] = useClearWishlistMutation();
 
-    const {cartItems, isLoading: isLoadingCart, isError: isCartError, refetch: updateCart} = cartService.useCart(user?.id);
+    const {cartItems, isLoading: isLoadingCart, isError: isCartError} = cartService.useCart(user?.id);
     const addToCart = cartService.useAddToCart(user?.id);
 
     const handleRemoveItem = async (id: number) => {
@@ -83,7 +77,6 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
 
     const handleAddToCart = async (product: Product) => {
         await addToCart(product, 1);
-        updateCart();
     }
 
     const handleNavigate = (productId?: number) => {
@@ -138,7 +131,8 @@ export default function WishlistModal({ isOpen, onClose }: WishlistModalProps) {
                                     key={item.id}
                                     itemId={item.id}
                                     product={item.product}
-                                    canAddToCart = {!cartItems.some(ci => ci.productId === item?.product?.id)}
+                                    isInCart = {cartItems.some(ci => ci.productId === item?.product?.id)}
+                                    isOutOfStock = {!(item?.product?.stockQuantity)}
                                     onRemove={handleRemoveItem}
                                     onImageClick={handleNavigate}
                                     onAddToCart={handleAddToCart}

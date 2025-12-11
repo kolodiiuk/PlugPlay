@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useEffect} from 'react';
 import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw, Star} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
@@ -13,8 +13,7 @@ import {skipToken} from '@reduxjs/toolkit/query';
 import {
     useAddToWishlistMutation,
     useIsInWishlistQuery,
-    useRemoveWishlistItemMutation,
-    useGetUserWishlistQuery
+    useRemoveWishlistItemMutation
 } from '../api/wishlistApi';
 
 const ProductDetail = () => {

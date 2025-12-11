@@ -4,14 +4,15 @@ import { Product } from '../../models/Product';
 interface WishlistItemProps {
     itemId: number;
     product: Product | undefined;
-    canAddToCart: boolean;
+    isInCart: boolean;
+    isOutOfStock: boolean;
     onRemove: (id: number) => void;
     onImageClick: (productId: number | undefined) => void;
     onAddToCart: (product: Product) => void;
     onBuy: (product: Product) => void;
 }
 
-export default function WishlistItem({ itemId, product, canAddToCart, onRemove, onImageClick, onAddToCart, onBuy}: WishlistItemProps) {
+export default function WishlistItem({itemId, product, isInCart, isOutOfStock, onRemove, onImageClick, onAddToCart, onBuy}: WishlistItemProps) {
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('uk-UA', {
             minimumFractionDigits: 2,
@@ -43,11 +44,13 @@ export default function WishlistItem({ itemId, product, canAddToCart, onRemove, 
 
                 <div className="flex-1">
                     <h3 className="text-base font-medium text-gray-900 mb-1">
-                        {product?.name}
+                        {product?.name} 
                     </h3>
+                    
                     <p className="text-lg font-semibold text-gray-900">
                         ₴{formatPrice(product?.price ?? 0)}
                     </p>
+                    <span className="text-sm text-red-500 font-medium">{isOutOfStock && 'Out of stock'}</span>
                 </div>
             </div>
 
@@ -58,10 +61,10 @@ export default function WishlistItem({ itemId, product, canAddToCart, onRemove, 
                             onAddToCart(product)
                         }
                     }}
-                    disabled={!canAddToCart}
+                    disabled={isInCart || isOutOfStock}
                     className="w-full bg-white text-gray-900 px-6 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors font-semibold
                     disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
-                    Add to Cart
+                    {isInCart? "Already in cart" : "Add to cart"}
                 </button>
                 <button
                     onClick={() => {
@@ -69,7 +72,7 @@ export default function WishlistItem({ itemId, product, canAddToCart, onRemove, 
                             onBuy(product)
                         }
                     }}
-                    disabled={!canAddToCart}
+                    disabled={isInCart || isOutOfStock}
                     className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2 
                     disabled:bg-gray-400 disabled:cursor-not-allowed">
                     <ShoppingCart className="w-4 h-4" />
