@@ -8,6 +8,8 @@ import ProductDetail from './pages/ProductDetail';
 import NotFound from './pages/NotFound';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminProducts from './pages/admin/AdminProducts';
+import AdminOrders from './pages/admin/AdminOrders';
 import AdminSettings from './pages/admin/AdminSettings';
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import ProtectedRoute from './components/common/ProtectedRoute.tsx';
@@ -56,6 +58,8 @@ function App() {
 
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="products" element={<AdminProducts />} />
+            <Route path="orders" element={<AdminOrders />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
         </Routes>
