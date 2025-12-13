@@ -3,10 +3,9 @@ import { Search, Plus } from 'lucide-react';
 import ProductsTable from '../../components/admin/ProductsTable';
 import ProductModal from '../../components/admin/ProductModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
-import { mockAdminProducts } from '../../data/mockAdminData';
 import { Product } from '../../models/Product';
 import { useProductsService } from '../../features/products/ProductsService';
-import { useGetAllCategoriesQuery } from '../../api/adminProductApi';
+import { useDeleteProductMutation, useGetAllCategoriesQuery } from '../../api/adminProductApi';
 import { Category } from '../../models/Category';
 
 const AdminProducts = () => {
@@ -26,6 +25,7 @@ const AdminProducts = () => {
        return matchesSearch;
      });
     const {data: categories = [], isLoading: isLoadingCategories, isError: isCategoryError } = useGetAllCategoriesQuery();
+    const [deleteProduct] = useDeleteProductMutation();
 
     const handleCreateProduct = () => {
         setModalMode('create');
@@ -45,6 +45,10 @@ const AdminProducts = () => {
     };
 
     const handleDeleteConfirm = () => {
+        if(selectedProduct?.id) {
+            deleteProduct(selectedProduct.id)
+        }
+        
         setIsDeleteModalOpen(false);
         setSelectedProduct(undefined);
     };

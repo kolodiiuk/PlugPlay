@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { Product } from '../../models/Product';
 import { Attribute } from '../../models/Attribute';
-import { useGetAllAttributesQuery, useGetAllCategoriesQuery } from '../../api/adminProductApi';
+import { useAddProductMutation, useGetAllAttributesQuery, useGetAllCategoriesQuery, useUpdateProductMutation } from '../../api/adminProductApi';
+import { ProductAttributeCreateRequest } from '../../api/adminProductApi';
+import ProductAttributes from '../products/ProductAttributes';
 
 
 interface ProductModalProps {
@@ -58,6 +60,7 @@ interface AttributeWithValue {
 
 const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => {
     const [formData, setFormData] = useState({
+        id: product?.id,
         name: product?.name || '',
         category: product?.category,
         price: product?.price || 0,
@@ -71,6 +74,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
     useEffect(() => {
         if (product) {
             setFormData({
+                id: product.id,
                 name: product.name,
                 category: product.category,
                 price: product.price,
@@ -84,8 +88,34 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
     const {data: categories = [], isLoading: isLoadingCategories, isError: isCategoryError } = useGetAllCategoriesQuery();
     const {data: availableAttributes = [], isLoading: isLoadingAttributes, isError: isAttributeError} = useGetAllAttributesQuery()
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const [addProduct] = useAddProductMutation();
+    const [updateProduct] = useUpdateProductMutation();
+ 
+    const handleSubmit = () => {
+        const productAttributes = selectedAttributes.map<ProductAttributeCreateRequest>(sa => ({attributeId: sa.attribute.id, value:sa.value.toString()}))   
+
+        if(!formData?.category?.id) {
+            onClose();
+            return;
+        }
+        const request = {
+                name: formData.name,
+                description: formData.description,
+                price: formData.price,
+                stockQuantity: formData.stock,
+                categoryId: formData.category.id,
+                productAttributes: productAttributes
+        }
+
+        if(mode === "create") {
+            addProduct(request)
+        }
+        else if(formData.id) {
+            updateProduct({
+                prodId: formData.id,
+                data: request
+            })
+        }
         onClose();
     };
 
@@ -185,7 +215,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
                                 Category
                             </label>
                             <select
-                                value={formData.category?.id ?? ""}
+                                value={formData.category?.id}
                                 onChange={(e) => handleCategoryChange(Number(e.target.value))}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
@@ -330,6 +360,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
                             Cancel
                         </button>
                         <button
+                            onClick={handleSubmit}
                             type="submit"
                             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
