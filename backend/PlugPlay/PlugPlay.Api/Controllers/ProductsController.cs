@@ -1,6 +1,3 @@
-using System.Net;
-using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -10,7 +7,6 @@ using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
 using PlugPlay.Services.Products;
-using Attribute = PlugPlay.Domain.Entities.Attribute;
 
 namespace PlugPlay.Api.Controllers;
 
@@ -22,14 +18,10 @@ public class ProductsController : ControllerBase
 
     private readonly ILogger<ProductsController> _logger;
 
-    private readonly Cloudinary _cloudinary;
-
-    public ProductsController(IProductsService productsService, ILogger<ProductsController> logger,
-        Cloudinary cloudinary)
+    public ProductsController(IProductsService productsService, ILogger<ProductsController> logger)
     {
         _productsService = productsService;
         _logger = logger;
-        _cloudinary = cloudinary;
     }
 
     [HttpGet("all")]
@@ -275,55 +267,6 @@ public class ProductsController : ControllerBase
         var productsDtos = result.Value.Select(ProductDto.MapProduct);
 
         return Ok(productsDtos);
-    }
-
-    // todo: [Authorize(Roles = "Admin")]
-    [HttpPost("image/{productId:int}")]
-    public async Task<IActionResult> UploadImage(int productId, IFormFile file)
-    {
-        if (file == null || file.Length == 0)
-        {
-            return BadRequest("No file uploaded.");
-        }
-
-        var uploadParams = new ImageUploadParams()
-        {
-            File = new FileDescription(file.FileName, file.OpenReadStream()),
-            PublicId = Guid.NewGuid().ToString(),
-            Overwrite = true,
-            Folder = "uploads/"
-        };
-
-        var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-        if (uploadResult.StatusCode != HttpStatusCode.OK)
-        {
-            return BadRequest(new ProblemDetails() { Title = "Upload failed." });
-        }
-
-        var result = await _productsService.AddImageAsync(
-            productId, uploadResult.Url.AbsoluteUri);
-        result.OnFailure(() =>
-        {
-            var failedToAddProductImage = LoggerMessage.Define<int>(
-                LogLevel.Error,
-                new EventId(2001, "FailedToAddProductImage"),
-                "Failed to add image for product {ProductId}");
-
-            failedToAddProductImage(_logger, productId, null);
-        });
-
-        result.OnSuccess(() =>
-        {
-            var productImageAdded = LoggerMessage.Define<int>(
-                LogLevel.Information,
-                new EventId(2002, "ProductImageAdded"),
-                "Added image for product {ProductId}");
-
-            productImageAdded(_logger, productId, null);
-        });
-
-        return Ok();
     }
 }
 
