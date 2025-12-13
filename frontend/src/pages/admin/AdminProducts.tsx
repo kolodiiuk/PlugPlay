@@ -5,6 +5,9 @@ import ProductModal from '../../components/admin/ProductModal';
 import DeleteConfirmModal from '../../components/admin/DeleteConfirmModal';
 import { mockAdminProducts } from '../../data/mockAdminData';
 import { Product } from '../../models/Product';
+import { useProductsService } from '../../features/products/ProductsService';
+import { useGetAllCategoriesQuery } from '../../api/adminProductApi';
+import { Category } from '../../models/Category';
 
 const AdminProducts = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -12,13 +15,17 @@ const AdminProducts = () => {
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<Category>();
 
-    const filteredProducts = mockAdminProducts.filter(product => {
-        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesCategory = selectedCategory === '' || product.category?.name === selectedCategory;
-        return matchesSearch && matchesCategory;
+    const productsResult = useProductsService({
+        categoryId: selectedCategory?.id,
     });
+    
+    const filteredProducts = productsResult.products.filter(product => {
+       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+       return matchesSearch;
+     });
+    const {data: categories = [], isLoading: isLoadingCategories, isError: isCategoryError } = useGetAllCategoriesQuery();
 
     const handleCreateProduct = () => {
         setModalMode('create');
@@ -66,19 +73,20 @@ const AdminProducts = () => {
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                 </div>
-                <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[200px]"
-                >
-                    <option value="">All Categories</option>
-                    <option value="Chargers">Chargers</option>
-                    <option value="Smart Home">Smart Home</option>
-                    <option value="Power Banks">Power Banks</option>
-                    <option value="Audio">Audio</option>
-                    <option value="Wearables">Wearables</option>
-                    <option value="Storage">Storage</option>
-                </select>
+                <div>
+                    <select
+                        value={selectedCategory?.id ?? ""}
+                        onChange={(e) => setSelectedCategory(categories.find((c) => c.id === Number(e.target.value)))}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                        <option value="">All</option>
+                        {categories.map(category => (
+                            <option key={category.id} value={category.id}>
+                                {category.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             <ProductsTable
