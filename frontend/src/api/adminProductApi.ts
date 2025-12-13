@@ -81,7 +81,6 @@ export const adminProductApi = baseApi.injectEndpoints({
 
   }),
 
-  overrideExisting: false,
 });
 
 export const {

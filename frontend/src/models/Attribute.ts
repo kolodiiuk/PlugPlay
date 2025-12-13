@@ -3,7 +3,7 @@ export interface Attribute {
   name: string;
   unit?: string;
   dataType: string;
-  productAttributeDtos: ProductAttribute[]
+  productAttributeDtos?: ProductAttribute[]
 }
 
 export interface ProductAttribute {
