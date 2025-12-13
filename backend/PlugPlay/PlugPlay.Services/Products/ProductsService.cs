@@ -5,16 +5,18 @@ using Microsoft.Extensions.Logging;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
+using PlugPlay.Services.Dto;
 using PlugPlay.Services.Interfaces;
 using Attribute = PlugPlay.Domain.Entities.Attribute;
 
 namespace PlugPlay.Services.Products;
 
-public class ProductsService : BaseService<ProductsService>, IProductsService
+public partial class ProductsService : BaseService<ProductsService>, IProductsService
 {
     public ProductsService(PlugPlayDbContext context, ILogger<ProductsService> logger) : base(context, logger)
     {
     }
+
 
     public async Task<IEnumerable<Product>> GetAllProductsAsync()
     {
@@ -72,42 +74,6 @@ public class ProductsService : BaseService<ProductsService>, IProductsService
         }
     }
 
-    public async Task<Result> AddImageAsync(int productId, string uploadResultUrl)
-    {
-        Log(LogLevel.Information, new EventId(2000, "AddingProductImage"), "Adding image for product {ProductId}",
-            productId);
-        try
-        {
-            var product = await Context.Products.FindAsync(productId);
-            if (product is null)
-            {
-                Log(LogLevel.Warning, new EventId(2001, "ProductNotFoundWarning"),
-                    "Product with ID {ProductId} not found", productId);
-                return Result.Fail("No such product");
-            }
-
-            var image = new ProductImage
-            {
-                ImageUrl = uploadResultUrl,
-                ProductId = productId
-            };
-            Context.ProductImages.Add(image);
-            await Context.SaveChangesAsync();
-
-            Log(LogLevel.Information, new EventId(2000, "ProductImageAddedSuccess"),
-                "Successfully added image for product {ProductId}", productId);
-
-            return Result.Success();
-        }
-        catch (Exception e)
-        {
-            Log(LogLevel.Error, new EventId(2001, "FailedToAddProductImageError"),
-                "Failed to add image for product {ProductId}. Error: {error}", productId, e.Message);
-
-            return Result.Fail($"{e.Message}");
-        }
-    }
-
     public async Task<Result<IEnumerable<Product>>> FilterProductsAsync(FilterProductsRequest request)
     {
         try
@@ -141,6 +107,110 @@ public class ProductsService : BaseService<ProductsService>, IProductsService
                 e.Message);
 
             return Result.Fail<IEnumerable<Product>>($"Problem filtering products: {e.Message}");
+        }
+    }
+
+    public async Task<Result<IEnumerable<Product>>> SearchProductsAsync(ProductSearchRequest req)
+    {
+        Log(LogLevel.Information, new EventId(2012, "SearchProductsStart"), "Fetching available products");
+
+        try
+        {
+            var query = Context.Products.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(req.Query))
+            {
+                var pattern = $"%{req.Query}%";
+                query = query.Where(p =>
+                        EF.Functions.ILike(p.Name, pattern) ||
+                        EF.Functions.ILike(p.Description, pattern))
+                    .Include(p => p.ProductImages);
+            }
+
+            var pageSize = Math.Clamp(req.PageSize, 1, 100);
+            var page = Math.Max(1, req.Page);
+            var skip = (page - 1) * pageSize;
+
+            var products = await query
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync();
+
+            Log(LogLevel.Information, new EventId(2002, "ProductsRetrievedSuccess"),
+                "Successfully retrieved {Count} products", products.Count);
+
+            return Result.Success<IEnumerable<Product>>(products);
+        }
+        catch (Exception e)
+        {
+            Log(LogLevel.Error, new EventId(2013, "SearchProductsError"), "Error searching products: {error}",
+                e.Message);
+
+            return Result.Fail<IEnumerable<Product>>($"Error searching products: {e.Message}");
+        }
+    }
+
+
+    public async Task<Result<Product>> GetProductByIdAsync(int id)
+    {
+        Log(LogLevel.Information, new EventId(2000, "FetchingProduct"), "Fetching product with ID: {ProductId}", id);
+
+        try
+        {
+            var product = await Context.Products
+                .Include(p => p.ProductAttributes)
+                .ThenInclude(pa => pa.Attribute)
+                .Include(p => p.ProductImages)
+                .Include(p => p.Category)
+                .Include(p => p.Reviews)
+                .ThenInclude(r => r.User)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (product == null)
+            {
+                Log(LogLevel.Warning, new EventId(2001, "ProductNotFoundWarningById"),
+                    "Product with ID {ProductId} not found", id);
+
+                return Result.Fail<Product>($"Product with ID {id} not found.");
+            }
+
+            Log(LogLevel.Information, new EventId(2002, "ProductRetrievedSuccess"),
+                "Successfully retrieved product with ID: {ProductId}", id);
+
+            return Result.Success(product);
+        }
+        catch (Exception e)
+        {
+            Log(LogLevel.Error, new EventId(2015, "GetProductByIdError"), "Error fetching product {id}. Error: {error}",
+                id, e.Message);
+
+            return Result.Fail<Product>(e.Message);
+        }
+    }
+
+
+    public async Task<Result<Category>> GetCategoryAsync(int categoryId)
+    {
+        try
+        {
+            var category = await Context.Categories
+                .Include(c => c.ParentCategory)
+                .Include(c => c.SubCategories)
+                .FirstOrDefaultAsync(c => c.Id == categoryId);
+
+            if (category is null)
+            {
+                return Result.Fail<Category>($"No category {categoryId}");
+            }
+
+            return Result.Success(category);
+        }
+        catch (Exception e)
+        {
+            Log(LogLevel.Error, new EventId(2014, "GetCategoryError"),
+                "Error getting category {categoryId}. Error: {error}", categoryId, e.Message);
+
+            return Result.Fail<Category>(e.Message);
         }
     }
 
@@ -273,106 +343,5 @@ public class ProductsService : BaseService<ProductsService>, IProductsService
             return Result.Fail<IEnumerable<Attribute>>(e.Message);
         }
     }
-
-    public async Task<Result<IEnumerable<Product>>> SearchProductsAsync(ProductSearchRequest req)
-    {
-        Log(LogLevel.Information, new EventId(2012, "SearchProductsStart"), "Fetching available products");
-
-        try
-        {
-            var query = Context.Products.AsNoTracking().AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(req.Query))
-            {
-                var pattern = $"%{req.Query}%";
-                query = query.Where(p =>
-                        EF.Functions.ILike(p.Name, pattern) ||
-                        EF.Functions.ILike(p.Description, pattern))
-                    .Include(p => p.ProductImages);
-            }
-
-            var pageSize = Math.Clamp(req.PageSize, 1, 100);
-            var page = Math.Max(1, req.Page);
-            var skip = (page - 1) * pageSize;
-
-            var products = await query
-                .Skip(skip)
-                .Take(pageSize)
-                .ToListAsync();
-
-            Log(LogLevel.Information, new EventId(2002, "ProductsRetrievedSuccess"),
-                "Successfully retrieved {Count} products", products.Count);
-
-            return Result.Success<IEnumerable<Product>>(products);
-        }
-        catch (Exception e)
-        {
-            Log(LogLevel.Error, new EventId(2013, "SearchProductsError"), "Error searching products: {error}",
-                e.Message);
-
-            return Result.Fail<IEnumerable<Product>>($"Error searching products: {e.Message}");
-        }
-    }
-
-    public async Task<Result<Category>> GetCategoryAsync(int categoryId)
-    {
-        try
-        {
-            var category = await Context.Categories
-                .Include(c => c.ParentCategory)
-                .Include(c => c.SubCategories)
-                .FirstOrDefaultAsync(c => c.Id == categoryId);
-
-            if (category is null)
-            {
-                return Result.Fail<Category>($"No category {categoryId}");
-            }
-
-            return Result.Success(category);
-        }
-        catch (Exception e)
-        {
-            Log(LogLevel.Error, new EventId(2014, "GetCategoryError"),
-                "Error getting category {categoryId}. Error: {error}", categoryId, e.Message);
-
-            return Result.Fail<Category>(e.Message);
-        }
-    }
-
-    public async Task<Result<Product>> GetProductByIdAsync(int id)
-    {
-        Log(LogLevel.Information, new EventId(2000, "FetchingProduct"), "Fetching product with ID: {ProductId}", id);
-
-        try
-        {
-            var product = await Context.Products
-                .Include(p => p.ProductAttributes)
-                .ThenInclude(pa => pa.Attribute)
-                .Include(p => p.ProductImages)
-                .Include(p => p.Category)
-                .Include(p => p.Reviews)
-                .ThenInclude(r => r.User)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (product == null)
-            {
-                Log(LogLevel.Warning, new EventId(2001, "ProductNotFoundWarningById"),
-                    "Product with ID {ProductId} not found", id);
-
-                return Result.Fail<Product>($"Product with ID {id} not found.");
-            }
-
-            Log(LogLevel.Information, new EventId(2002, "ProductRetrievedSuccess"),
-                "Successfully retrieved product with ID: {ProductId}", id);
-
-            return Result.Success(product);
-        }
-        catch (Exception e)
-        {
-            Log(LogLevel.Error, new EventId(2015, "GetProductByIdError"), "Error fetching product {id}. Error: {error}",
-                id, e.Message);
-
-            return Result.Fail<Product>(e.Message);
-        }
-    }
 }
+
