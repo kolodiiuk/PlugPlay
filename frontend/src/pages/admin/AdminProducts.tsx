@@ -7,6 +7,8 @@ import { Product } from '../../models/Product';
 import { useProductsService } from '../../features/products/ProductsService';
 import { useDeleteProductMutation, useGetAllCategoriesQuery } from '../../api/adminProductApi';
 import { Category } from '../../models/Category';
+import LoadingMessage from '../../components/common/LoadingMessage';
+import ErrorMessage from '../../components/common/ErrorMessage';
 
 const AdminProducts = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,6 +54,14 @@ const AdminProducts = () => {
         setIsDeleteModalOpen(false);
         setSelectedProduct(undefined);
     };
+
+     if (isLoadingCategories || productsResult.isLoading) {
+        return LoadingMessage("products control page");
+      }
+    
+      if (isCategoryError || productsResult.isError) {
+        return ErrorMessage("error loading products control page", "couldn't retrieve data from the database")
+      }
 
     return (
         <div className="max-w-7xl ml-8">

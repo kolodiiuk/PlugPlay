@@ -5,6 +5,8 @@ import { Attribute } from '../../models/Attribute';
 import { useAddProductMutation, useGetAllAttributesQuery, useGetAllCategoriesQuery, useUpdateProductMutation } from '../../api/adminProductApi';
 import { ProductAttributeCreateRequest } from '../../api/adminProductApi';
 import ProductAttributes from '../products/ProductAttributes';
+import { useGetAttributeGroupsMutation } from '../../api/productsApi';
+import AttributeGroup from '../../models/AttributeGroup';
 
 
 interface ProductModalProps {
@@ -69,24 +71,69 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
         imageUrl: product?.pictureUrls[0] || ''
     });
 
-    const [selectedAttributes, setSelectedAttributes] = useState<AttributeWithValue[]>([]);
-
     useEffect(() => {
-        if (product) {
-            setFormData({
-                id: product.id,
-                name: product.name,
-                category: product.category,
-                price: product.price,
-                stock: product.stockQuantity,
-                description: product.description,
-                imageUrl: product.pictureUrls[0] || ''
-            });
+        setFormData({
+            id: product?.id,
+            name: product?.name || '',
+            category: product?.category ?? categories[0],
+            price: product?.price || 0,
+            stock: product?.stockQuantity || 0,
+            description: product?.description || '',
+            imageUrl: product?.pictureUrls[0] || ''
+        });
+
+        if(!product) {
+            setSelectedAttributes([]);
+            return;
         }
+
+        const mapAttributeGroupToAttributeWithValue = (
+            group: AttributeGroup
+        ): AttributeWithValue => {
+            const productAttr = group.productAttributeDtos?.[0];
+
+            const attribute: Attribute = {
+                id: group.id,
+                name: group.name,
+                unit: group.unit,
+                dataType: group.dataType,
+                productAttributeDtos: productAttr ? [productAttr] : []
+            };
+
+            const value =
+                group.dataType === "Number"
+                    ? productAttr?.numValue ?? 0
+                    : productAttr?.strValue ?? "";
+
+            return {
+                attribute,
+                value
+            };
+        };
+
+        const loadAttributes = async () => {
+            if (!product.category?.id) return;
+
+            try {
+                const attributeGroups = await getAttributeGroups({
+                    categoryId: product.category.id,
+                    productIds: [product.id]
+                }).unwrap();
+
+                setSelectedAttributes(attributeGroups.map( ag => mapAttributeGroupToAttributeWithValue(ag)));
+            } catch (err) {
+                console.error("Failed to load attributes", err);
+                setSelectedAttributes([]);
+            }
+        };
+
+        loadAttributes();
     }, [product]);
 
+    const [selectedAttributes, setSelectedAttributes] = useState<AttributeWithValue[]>([]);
     const {data: categories = [], isLoading: isLoadingCategories, isError: isCategoryError } = useGetAllCategoriesQuery();
     const {data: availableAttributes = [], isLoading: isLoadingAttributes, isError: isAttributeError} = useGetAllAttributesQuery()
+    const [getAttributeGroups] = useGetAttributeGroupsMutation();
 
     const [addProduct] = useAddProductMutation();
     const [updateProduct] = useUpdateProductMutation();
@@ -176,7 +223,10 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
         setSelectedAttributes(updated);
     };
 
-    if (!isOpen || isLoadingCategories || isLoadingAttributes || isCategoryError || isCategoryError) {
+    const isError = isCategoryError || isAttributeError;
+    const isLoading = isLoadingCategories || isLoadingAttributes;
+
+    if (!isOpen ||  isLoading || isError) {
         return null;
     } 
 
