@@ -7,6 +7,7 @@ import { ProductAttributeCreateRequest } from '../../api/adminProductApi';
 import { useGetAttributeGroupsMutation } from '../../api/productsApi';
 import AttributeGroup from '../../models/AttributeGroup';
 import ProductImageGallery from '../products/ProductImageGallery';
+import { ValidatedInput } from '../order/ValidatedInput';
 
 interface ProductModalProps {
     isOpen: boolean;
@@ -23,7 +24,7 @@ interface AttributeWithValue {
 const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => {
     const [formData, setFormData] = useState({
         id: product?.id,
-        name: product?.name || '',
+        name: product?.name || 'product',
         category: product?.category,
         price: product?.price || 0,
         stock: product?.stockQuantity || 0,
@@ -36,7 +37,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
     useEffect(() => {
         setFormData({
             id: product?.id,
-            name: product?.name || '',
+            name: product?.name || 'product',
             category: product?.category ?? categories[0],
             price: product?.price || 0,
             stock: product?.stockQuantity || 0,
@@ -44,7 +45,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
             imageUrls: product?.pictureUrls
         });
 
-        if(!product) {
+        if (!product) {
             setSelectedAttributes([]);
             return;
         }
@@ -63,9 +64,9 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
             };
 
             const value =
-                group.dataType === "Number"
-                    ? productAttr?.numValue ?? 0
-                    : productAttr?.strValue ?? "";
+                group.dataType === "string"
+                    ? productAttr?.strValue ?? ""
+                    : productAttr?.numValue ?? 0;
 
             return {
                 attribute,
@@ -82,7 +83,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
                     productIds: [product.id]
                 }).unwrap();
 
-                setSelectedAttributes(attributeGroups.map( ag => mapAttributeGroupToAttributeWithValue(ag)));
+                setSelectedAttributes(attributeGroups.map(ag => mapAttributeGroupToAttributeWithValue(ag)));
             } catch (err) {
                 console.error("Failed to load attributes", err);
                 setSelectedAttributes([]);
@@ -93,8 +94,8 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
     }, [product]);
 
     const [selectedAttributes, setSelectedAttributes] = useState<AttributeWithValue[]>([]);
-    const {data: categories = [], isLoading: isLoadingCategories, isError: isCategoryError } = useGetAllCategoriesQuery();
-    const {data: availableAttributes = [], isLoading: isLoadingAttributes, isError: isAttributeError} = useGetAllAttributesQuery()
+    const { data: categories = [], isLoading: isLoadingCategories, isError: isCategoryError } = useGetAllCategoriesQuery();
+    const { data: availableAttributes = [], isLoading: isLoadingAttributes, isError: isAttributeError } = useGetAllAttributesQuery()
 
     const [getAttributeGroups] = useGetAttributeGroupsMutation();
     const [uploadProductImage] = useUploadProductImageMutation();
@@ -109,24 +110,24 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
             availableAttributes.filter(
                 a => !selectedAttributes.some(sa => sa.attribute.id === a.id)
             ),
-        [ availableAttributes, selectedAttributes]
+        [availableAttributes, selectedAttributes]
     );
     // useEffect(() => {
     //     const loadAttributes = () => {
-            // if (!formData.category?.id) {
-            //     setAvailableAttributes([]);
+    // if (!formData.category?.id) {
+    //     setAvailableAttributes([]);
 
-            //     return;
-            // }
+    //     return;
+    // }
 
-            //const attrs = await getAttributeGroups({ categoryId: formData?.category?.id }).unwrap();
+    //const attrs = await getAttributeGroups({ categoryId: formData?.category?.id }).unwrap();
 
     //         setAvailableAttributes(attrs);
     //     };
 
     // loadAttributes();
     // }, [formData.category?.id, selectedAttributes, attrs]);
-        
+
 
     const addAttribute = (attr: Attribute) => {
         const newAttribute: AttributeWithValue = {
@@ -151,35 +152,39 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
         setSelectedAttributes(updated);
     };
 
-      const handleSubmit = () => {
-        const productAttributes = selectedAttributes.map<ProductAttributeCreateRequest>(sa => ({attributeId: sa.attribute.id, value:sa.value.toString()}))   
+    const handleSubmit = async () => {
+        const productAttributes = selectedAttributes.map<ProductAttributeCreateRequest>(sa => ({ attributeId: sa.attribute.id, value: sa.value.toString() }))
 
-        if(!formData?.category?.id) {
-            onClose();
+        if (!formData?.category?.id || formData.name.length < 3) {
             return;
         }
         const request = {
-                name: formData.name,
-                description: formData.description,
-                price: formData.price,
-                stockQuantity: formData.stock,
-                categoryId: formData.category.id,
-                productAttributes: productAttributes
+            name: formData.name,
+            description: formData.description,
+            price: formData.price,
+            stockQuantity: formData.stock,
+            categoryId: formData.category.id,
+            productAttributes: productAttributes
         }
 
-        if(mode === "create") {
-            addProduct(request)
-        }
-        else if(formData.id) {
-            updateProduct({
-                prodId: formData.id,
-                data: request
-            })
+        try {
+            if (mode === "create") {
+                await addProduct(request).unwrap();
+            } else if (formData.id) {
+                await updateProduct({
+                    prodId: formData.id,
+                    data: request
+                }).unwrap();
+            }
+
+            alert("Product saved successfully!");
+        } catch (error) {
+            alert("Something went wrong while saving");
         }
         onClose();
     };
 
-        const handleCategoryChange = (categoryId: number) => {
+    const handleCategoryChange = (categoryId: number) => {
         console.log(categoryId);
         console.log(categories.find((c) => c.id === categoryId));
         setFormData({ ...formData, category: categories.find((c) => c.id === categoryId) });
@@ -205,10 +210,11 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
 
             e.target.value = "";
 
-            console.log("Image uploaded successfully");
+            alert("Image uploaded successfully");
         } catch (err) {
-            console.error("Image upload failed", err);
+           alert("Image upload failed");
         }
+        onClose();
     };
 
     const isError = isCategoryError || isAttributeError;
@@ -216,7 +222,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
 
     if (!isOpen || isLoading || isError) {
         return null;
-    } 
+    }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -239,10 +245,11 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Product Name
                             </label>
-                            <input
-                                type="text"
+                            <ValidatedInput
                                 value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, name: e })}
+                                validate={(input) => input.length >= 3}
+                                errorMessage='Product name must be at least 3 characters long'
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="Enter product name"
                             />
@@ -323,10 +330,10 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
                             <div className="border border-gray-300 rounded bg-gray-100 overflow-hidden align-center">
                                 <div className="bg-white rounded-lg p-8">
                                     <ProductImageGallery
-                                    images={formData.imageUrls ?? []}
-                                    initialIndex={0}
-                                    altPrefix={formData.name}
-                                    className=""
+                                        images={formData.imageUrls ?? []}
+                                        initialIndex={0}
+                                        altPrefix={formData.name}
+                                        className=""
                                     />
                                 </div>
                             </div>
@@ -413,7 +420,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
                         </button>
                         <button
                             onClick={handleSubmit}
-                            type="submit"
+                            type="button"
                             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
                             {mode === 'create' ? 'Create Product' : 'Save Changes'}
