@@ -18,18 +18,6 @@ const ProductsTable = ({ products, onEdit, onDelete }: ProductsTableProps) => {
         return 'text-red-600';
     };
 
-    const getCategoryColor = (categoryName: string) => {
-        const colors: Record<string, string> = {
-            'Chargers': 'bg-blue-100 text-blue-700',
-            'Smart Home': 'bg-purple-100 text-purple-700',
-            'Power Banks': 'bg-green-100 text-green-700',
-            'Audio': 'bg-pink-100 text-pink-700',
-            'Wearables': 'bg-indigo-100 text-indigo-700',
-            'Storage': 'bg-orange-100 text-orange-700'
-        };
-        return colors[categoryName] || 'bg-gray-100 text-gray-700';
-    };
-
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
@@ -70,7 +58,7 @@ const ProductsTable = ({ products, onEdit, onDelete }: ProductsTableProps) => {
                                     <p className="text-sm font-medium text-gray-900">{product.name}</p>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getCategoryColor(product.category?.name || '')}`}>
+                                    <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700`}>
                                         {product.category?.name}
                                     </span>
                                 </td>

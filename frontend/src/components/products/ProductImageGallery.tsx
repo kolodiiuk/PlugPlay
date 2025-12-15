@@ -60,6 +60,7 @@ const ProductImageGallery: React.FC<Props> = ({
       {/* Main image */}
       <div className="relative bg-white rounded-lg overflow-hidden flex items-center justify-center">
         <button
+          type="button"
           aria-label="Previous image"
           onClick={prev}
           className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 p-1 rounded-full shadow hover:bg-white"
@@ -75,6 +76,7 @@ const ProductImageGallery: React.FC<Props> = ({
         />
 
         <button
+          type="button"
           aria-label="Next image"
           onClick={next}
           className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 p-1 rounded-full shadow hover:bg-white"
@@ -91,6 +93,7 @@ const ProductImageGallery: React.FC<Props> = ({
       <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-2">
         {images.map((src, idx) => (
           <button
+             type="button"
             key={src + idx}
             onClick={() => setCurrent(idx)}
             className={`flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border-2 ${
@@ -113,6 +116,7 @@ const ProductImageGallery: React.FC<Props> = ({
         >
           <div className="relative max-w-[95%] max-h-[95%]" onClick={(e) => e.stopPropagation()}>
             <button
+              type="button"
               aria-label="Close"
               onClick={() => setIsOpen(false)}
               className="absolute right-2 top-2 z-20 bg-white/90 rounded-full p-1"
@@ -121,6 +125,7 @@ const ProductImageGallery: React.FC<Props> = ({
             </button>
 
             <button
+              type="button"
               aria-label="Previous"
               onClick={prev}
               className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-white/90 rounded-full p-1"
@@ -132,6 +137,7 @@ const ProductImageGallery: React.FC<Props> = ({
                  className="w-full h-auto max-h-[90vh] object-contain"/>
 
             <button
+              type="button"
               aria-label="Next"
               onClick={next}
               className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-white/90 rounded-full p-1"

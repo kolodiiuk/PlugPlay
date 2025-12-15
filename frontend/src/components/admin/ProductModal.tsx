@@ -1,13 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { Product } from '../../models/Product';
 import { Attribute } from '../../models/Attribute';
-import { useAddProductMutation, useGetAllAttributesQuery, useGetAllCategoriesQuery, useUpdateProductMutation } from '../../api/adminProductApi';
+import { useAddProductMutation, useGetAllAttributesQuery, useGetAllCategoriesQuery, useUpdateProductMutation, useUploadProductImageMutation } from '../../api/adminProductApi';
 import { ProductAttributeCreateRequest } from '../../api/adminProductApi';
-import ProductAttributes from '../products/ProductAttributes';
 import { useGetAttributeGroupsMutation } from '../../api/productsApi';
 import AttributeGroup from '../../models/AttributeGroup';
-
+import ProductImageGallery from '../products/ProductImageGallery';
 
 interface ProductModalProps {
     isOpen: boolean;
@@ -21,45 +20,6 @@ interface AttributeWithValue {
     value: string | number;
 }
 
-// const mockAttributesByCategory: Record<string, AttributeTemplate[]> = {
-//     'Chargers': [
-//         { id: 1, name: 'Power Output', dataType: 'number', unit: 'W' },
-//         { id: 2, name: 'Cable Length', dataType: 'number', unit: 'm' },
-//         { id: 3, name: 'Port Type', dataType: 'string' },
-//         { id: 4, name: 'Fast Charging', dataType: 'string' }
-//     ],
-//     'Smart Home': [
-//         { id: 5, name: 'Connectivity', dataType: 'string' },
-//         { id: 6, name: 'Voltage', dataType: 'number', unit: 'V' },
-//         { id: 7, name: 'Smart Features', dataType: 'string' },
-//         { id: 8, name: 'Voice Control', dataType: 'string' }
-//     ],
-//     'Power Banks': [
-//         { id: 9, name: 'Battery Capacity', dataType: 'number', unit: 'mAh' },
-//         { id: 10, name: 'Output Power', dataType: 'number', unit: 'W' },
-//         { id: 11, name: 'Number of Ports', dataType: 'number' },
-//         { id: 12, name: 'Fast Charging', dataType: 'string' }
-//     ],
-//     'Audio': [
-//         { id: 13, name: 'Battery Life', dataType: 'number', unit: 'hours' },
-//         { id: 14, name: 'Bluetooth Version', dataType: 'string' },
-//         { id: 15, name: 'Noise Cancellation', dataType: 'string' },
-//         { id: 16, name: 'Driver Size', dataType: 'number', unit: 'mm' }
-//     ],
-//     'Wearables': [
-//         { id: 17, name: 'Battery Life', dataType: 'number', unit: 'days' },
-//         { id: 18, name: 'Water Resistance', dataType: 'string' },
-//         { id: 19, name: 'Display Size', dataType: 'number', unit: 'inch' },
-//         { id: 20, name: 'Heart Rate Monitor', dataType: 'string' }
-//     ],
-//     'Storage': [
-//         { id: 21, name: 'Capacity', dataType: 'number', unit: 'GB' },
-//         { id: 22, name: 'Read Speed', dataType: 'number', unit: 'MB/s' },
-//         { id: 23, name: 'Write Speed', dataType: 'number', unit: 'MB/s' },
-//         { id: 24, name: 'Interface', dataType: 'string' }
-//     ]
-// };
-
 const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => {
     const [formData, setFormData] = useState({
         id: product?.id,
@@ -68,8 +28,10 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
         price: product?.price || 0,
         stock: product?.stockQuantity || 0,
         description: product?.description || '',
-        imageUrl: product?.pictureUrls[0] || ''
+        imageUrls: product?.pictureUrls
     });
+
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         setFormData({
@@ -79,7 +41,7 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
             price: product?.price || 0,
             stock: product?.stockQuantity || 0,
             description: product?.description || '',
-            imageUrl: product?.pictureUrls[0] || ''
+            imageUrls: product?.pictureUrls
         });
 
         if(!product) {
@@ -133,45 +95,11 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
     const [selectedAttributes, setSelectedAttributes] = useState<AttributeWithValue[]>([]);
     const {data: categories = [], isLoading: isLoadingCategories, isError: isCategoryError } = useGetAllCategoriesQuery();
     const {data: availableAttributes = [], isLoading: isLoadingAttributes, isError: isAttributeError} = useGetAllAttributesQuery()
-    const [getAttributeGroups] = useGetAttributeGroupsMutation();
 
+    const [getAttributeGroups] = useGetAttributeGroupsMutation();
+    const [uploadProductImage] = useUploadProductImageMutation();
     const [addProduct] = useAddProductMutation();
     const [updateProduct] = useUpdateProductMutation();
- 
-    const handleSubmit = () => {
-        const productAttributes = selectedAttributes.map<ProductAttributeCreateRequest>(sa => ({attributeId: sa.attribute.id, value:sa.value.toString()}))   
-
-        if(!formData?.category?.id) {
-            onClose();
-            return;
-        }
-        const request = {
-                name: formData.name,
-                description: formData.description,
-                price: formData.price,
-                stockQuantity: formData.stock,
-                categoryId: formData.category.id,
-                productAttributes: productAttributes
-        }
-
-        if(mode === "create") {
-            addProduct(request)
-        }
-        else if(formData.id) {
-            updateProduct({
-                prodId: formData.id,
-                data: request
-            })
-        }
-        onClose();
-    };
-
-    const handleCategoryChange = (categoryId: number) => {
-        console.log(categoryId);
-        console.log(categories.find((c) => c.id === categoryId));
-        setFormData({ ...formData, category: categories.find((c) => c.id === categoryId) });
-        setSelectedAttributes([]);
-    };
 
     //const [getAttributeGroups] = useGetAttributeGroupsMutation();
 
@@ -223,10 +151,70 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
         setSelectedAttributes(updated);
     };
 
+      const handleSubmit = () => {
+        const productAttributes = selectedAttributes.map<ProductAttributeCreateRequest>(sa => ({attributeId: sa.attribute.id, value:sa.value.toString()}))   
+
+        if(!formData?.category?.id) {
+            onClose();
+            return;
+        }
+        const request = {
+                name: formData.name,
+                description: formData.description,
+                price: formData.price,
+                stockQuantity: formData.stock,
+                categoryId: formData.category.id,
+                productAttributes: productAttributes
+        }
+
+        if(mode === "create") {
+            addProduct(request)
+        }
+        else if(formData.id) {
+            updateProduct({
+                prodId: formData.id,
+                data: request
+            })
+        }
+        onClose();
+    };
+
+        const handleCategoryChange = (categoryId: number) => {
+        console.log(categoryId);
+        console.log(categories.find((c) => c.id === categoryId));
+        setFormData({ ...formData, category: categories.find((c) => c.id === categoryId) });
+        setSelectedAttributes([]);
+    };
+
+    const chooseAndUploadImage = (e: React.MouseEvent) => {
+        e.preventDefault();
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelected = async (
+        e: React.ChangeEvent<HTMLInputElement>
+    ) => {
+        const file = e.target.files?.[0];
+        if (!file || !formData.id) return;
+
+        try {
+            await uploadProductImage({
+                productId: formData.id,
+                file
+            }).unwrap();
+
+            e.target.value = "";
+
+            console.log("Image uploaded successfully");
+        } catch (err) {
+            console.error("Image upload failed", err);
+        }
+    };
+
     const isError = isCategoryError || isAttributeError;
     const isLoading = isLoadingCategories || isLoadingAttributes;
 
-    if (!isOpen ||  isLoading || isError) {
+    if (!isOpen || isLoading || isError) {
         return null;
     } 
 
@@ -318,26 +306,40 @@ const ProductModal = ({ isOpen, onClose, product, mode }: ProductModalProps) => 
                         />
                     </div>
 
-                    <div className="mt-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Image URL
-                        </label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={formData.imageUrl}
-                                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="https://example.com/image.jpg"
-                            />
+                    {(mode != "create") && (<div className="mt-6" >
+                        <div className="flex flex-col gap-3">
+                            <label className="text-sm font-medium text-gray-700">
+                                Image
+                            </label>
+
                             <button
                                 type="button"
-                                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                onClick={chooseAndUploadImage}
+                                className="px-3 py-2 border border-gray-300 rounded-lg"
                             >
                                 Upload
                             </button>
+
+                            <div className="border border-gray-300 rounded bg-gray-100 overflow-hidden align-center">
+                                <div className="bg-white rounded-lg p-8">
+                                    <ProductImageGallery
+                                    images={formData.imageUrls ?? []}
+                                    initialIndex={0}
+                                    altPrefix={formData.name}
+                                    className=""
+                                    />
+                                </div>
+                            </div>
+
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                hidden
+                                onChange={handleFileSelected}
+                            />
                         </div>
-                    </div>
+                    </div>)}
 
                     <div className="mt-8 border-t border-gray-200 pt-6">
                         <div className="flex items-center justify-between mb-4">
