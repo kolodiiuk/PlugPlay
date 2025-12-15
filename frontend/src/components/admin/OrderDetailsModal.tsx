@@ -3,15 +3,15 @@ import { Order } from '../../models/Order';
 import { OrderStatusInfo } from '../../models/enums/OrderStatus';
 import { DeliveryMethodInfo } from '../../models/enums/DeliveryMethod';
 import { PaymentMethodInfo } from '../../models/enums/PaymentMethod';
-import { mockCustomerNames } from '../../data/mockAdminData';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
     order: Order | null;
+    userName: string;
 }
 
-const OrderDetailsModal = ({ isOpen, onClose, order }: OrderDetailsModalProps) => {
+const OrderDetailsModal = ({ isOpen, onClose, order, userName }: OrderDetailsModalProps) => {
     if (!isOpen || !order) return null;
 
     const formatCurrency = (amount: number) => {
@@ -64,7 +64,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }: OrderDetailsModalProps) =
                     <div className="grid grid-cols-2 gap-6">
                         <div>
                             <p className="text-xs text-gray-500 mb-1">Customer</p>
-                            <p className="text-sm font-medium text-gray-900">{mockCustomerNames[order.userId as number]}</p>
+                            <p className="text-sm font-medium text-gray-900">{userName}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 mb-1">Order Status</p>

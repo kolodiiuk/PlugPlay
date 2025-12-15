@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import OrdersTable from '../../components/admin/OrdersTable';
 import OrderDetailsModal from '../../components/admin/OrderDetailsModal';
-import { mockAdminOrders } from '../../data/mockAdminData';
 import { Order } from '../../models/Order';
 import OrderStatus from '../../models/enums/OrderStatus';
+import { useCancelOrderAdminMutation, useGetAllOrdersQuery, useUpdateOrderStatusMutation } from '../../api/adminOrderApi';
+import LoadingMessage from '../../components/common/LoadingMessage';
+import ErrorMessage from '../../components/common/ErrorMessage';
+import { useGetAllUsersQuery } from '../../api/userInfoApi';
+import { useGetAllProductsQuery } from '../../api/productsApi';
+import { OrderItemWithDetails } from '../../models/Order';
 
 const AdminOrders = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -12,9 +17,48 @@ const AdminOrders = () => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-    const filteredOrders = mockAdminOrders.filter(order => {
+    const {data: orders, isLoading: isLoadingOrders, isError: isOrderError} = useGetAllOrdersQuery();
+    const {
+          data: products,
+          isLoading: isLoadingProducts,
+          isError: isProductsError,
+      } = useGetAllProductsQuery();
+
+    const enrichedOrders = useMemo(() => {
+        if (!orders || !products) return [];
+    
+        return orders.map((order) => ({
+          ...order,
+          orderItems: order.orderItems.map((item) => {
+            const product = products.find((p) => p.id === item.productId);
+    
+            const enriched: OrderItemWithDetails = {
+              ...item,
+              productName: product?.name ?? "Unknown product",
+              price: product?.price ?? 0,
+            };
+    
+            return enriched;
+          }),
+        }));
+    }, [orders, products]);
+    
+    const {data: users, isLoading: isLoadingUsers, isError: isUsersError} = useGetAllUsersQuery();
+    const userNamesById = useMemo<Record<number, string>>(
+        () =>
+            Object.fromEntries(
+                (users ?? []).map(u => [u.id, u.firstName + " " + u.lastName])
+            ),
+        [users]
+    );
+
+    const [cancelOrder] = useCancelOrderAdminMutation();
+    const [updateOrderStatus] = useUpdateOrderStatusMutation();
+
+    const filteredOrders = enrichedOrders.filter(order => {
         const matchesSearch =
             order.id.toString().includes(searchQuery) ||
+            userNamesById[order.userId].toLowerCase().includes(searchQuery.toLowerCase()) ||
             searchQuery === '';
 
         const matchesStatus =
@@ -33,11 +77,19 @@ const AdminOrders = () => {
         console.log('Cancel order:', order);
     };
 
+    if (isLoadingOrders || isLoadingUsers) {
+        return LoadingMessage("products control page");
+    }
+
+    if (isOrderError || isUsersError) {
+        return ErrorMessage("error loading products control page", "couldn't retrieve data from the database")
+    }
+
     return (
         <div className="max-w-7xl ml-8">
             <div className="flex items-center justify-between mb-8">
                 <h1 className="text-2xl font-semibold text-gray-900">Orders Management</h1>
-                <p className="text-sm text-gray-500">Total Orders: {mockAdminOrders.length}</p>
+                <p className="text-sm text-gray-500">Total Orders: {enrichedOrders.length}</p>
             </div>
 
             <div className="flex gap-4 mb-6">
@@ -69,9 +121,11 @@ const AdminOrders = () => {
                 orders={filteredOrders}
                 onView={handleViewOrder}
                 onCancel={handleCancelOrder}
+                userNamesById={userNamesById}
             />
 
             <OrderDetailsModal
+                userName={selectedOrder?.userId ? userNamesById[selectedOrder?.userId] : ""}
                 isOpen={isDetailsModalOpen}
                 onClose={() => setIsDetailsModalOpen(false)}
                 order={selectedOrder}

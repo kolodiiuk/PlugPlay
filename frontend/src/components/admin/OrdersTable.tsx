@@ -1,6 +1,6 @@
 import { Order } from '../../models/Order';
 import { OrderStatusInfo } from '../../models/enums/OrderStatus';
-import { mockCustomerNames } from '../../data/mockAdminData';
+//import { mockCustomerNames } from '../../data/mockAdminData';
 import { Eye, X } from 'lucide-react';
 import OrderStatus from '../../models/enums/OrderStatus';
 
@@ -8,9 +8,10 @@ interface OrdersTableProps {
     orders: Order[];
     onView: (order: Order) => void;
     onCancel: (order: Order) => void;
+    userNamesById: Record<number, string>;
 }
 
-const OrdersTable = ({ orders, onView, onCancel }: OrdersTableProps) => {
+const OrdersTable = ({ orders, userNamesById, onView, onCancel }: OrdersTableProps) => {
     const formatCurrency = (amount: number) => {
         return `${amount.toFixed(2)} ₴`;
     };
@@ -71,7 +72,7 @@ const OrdersTable = ({ orders, onView, onCancel }: OrdersTableProps) => {
                                     <p className="text-sm font-medium text-gray-900">#{order.id}</p>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <p className="text-sm text-gray-900">{mockCustomerNames[order.userId as number]}</p>
+                                    <p className="text-sm text-gray-900">{userNamesById[order.userId as number]}</p>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <p className="text-sm text-gray-900">{formatDate(order.orderDate)}</p>
