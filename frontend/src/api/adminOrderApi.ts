@@ -14,7 +14,7 @@ export const adminOrderApi = baseApi.injectEndpoints({
         method: "PUT",
         body: status
       }),
-      //invalidatesTags: ["Orders"]
+      invalidatesTags: ["Orders"]
     }),
 
     updatePaymentStatus: builder.mutation<void, {
@@ -26,7 +26,7 @@ export const adminOrderApi = baseApi.injectEndpoints({
         method: "PUT",
         body: paymentStatus
       }),
-      //invalidatesTags: ["Orders"]
+      invalidatesTags: ["Orders"]
     }),
 
     cancelOrderAdmin: builder.mutation<void, number>({
@@ -34,7 +34,7 @@ export const adminOrderApi = baseApi.injectEndpoints({
         url: `admin/order/cancel/${orderId}`,
         method: "PUT"
       }),
-      //invalidatesTags: ["Orders"]
+      invalidatesTags: ["Orders"]
     })
 
   })

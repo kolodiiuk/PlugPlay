@@ -28,21 +28,26 @@ export const orderApi = baseApi.injectEndpoints({
         method: "POST",
         body: order,
       }),
+       invalidatesTags: ['Orders'],
     }),
     getUserOrders: builder.query<Order[], number>({
       query: (userId) => `order/user/${userId}`,
+      providesTags: ['Orders']
     }),
     getOrderItems: builder.query<OrderItem[], number>({
       query: (orderId) => `order/${orderId}/order_items`,
+      providesTags: ['Orders']
     }),
     getOrderById: builder.query<Order, number>({
       query: (orderId) => `order/${orderId}`,
+      providesTags: ['Orders']
     }),
     cancelOrder: builder.mutation<void, number>({
       query: (orderId) => ({
         url: `order/cancel/${orderId}`,
         method: "PUT",
-      })
+      }),
+      invalidatesTags: ['Orders'],
     }),
   })
 });
