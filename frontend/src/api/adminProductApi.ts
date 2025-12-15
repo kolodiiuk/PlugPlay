@@ -25,7 +25,7 @@ export const adminProductApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
-      //invalidatesTags: ["Products"],
+      invalidatesTags: ["Products"],
     }),
 
     updateProduct: builder.mutation<void, { prodId: number; data: ProductRequest }>({
@@ -34,7 +34,7 @@ export const adminProductApi = baseApi.injectEndpoints({
         method: "PUT",
         body: data,
       }),
-      //invalidatesTags: ["Products"],
+      invalidatesTags: ["Products"],
     }),
 
     deleteProduct: builder.mutation<void, number>({
@@ -42,27 +42,23 @@ export const adminProductApi = baseApi.injectEndpoints({
         url: `admin/product/${prodId}`,
         method: "DELETE",
       }),
-      //invalidatesTags: ["Products"],
+      invalidatesTags: ["Products"],
     }),
 
     getAllCategories: builder.query<Category[], void>({
       query: () => `admin/product/category/all`,
-      //providesTags: ["Categories"],
     }),
 
     getCategoryById: builder.query<Category, number>({
       query: (id) => `admin/product/category/${id}`,
-      //providesTags: (result, error, id) => [{ type: "Categories", id }],
     }),
 
     getAllAttributes: builder.query<Attribute[], void>({
       query: () => `admin/product/attribute/all`,
-      //providesTags: ["Attributes"],
     }),
 
     getAttributeById: builder.query<Attribute, number>({
       query: (id) => `admin/product/attribute/${id}`,
-      //providesTags: (result, error, id) => [{ type: "Attributes", id }],
     }),
 
     uploadProductImage: builder.mutation<void, { productId: number; file: File }>({
@@ -76,7 +72,7 @@ export const adminProductApi = baseApi.injectEndpoints({
           body: formData,
         };
       },
-      //invalidatesTags: ["Products"],
+      invalidatesTags: ["Products"],
     }),
 
   }),

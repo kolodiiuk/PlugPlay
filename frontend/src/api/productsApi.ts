@@ -17,12 +17,14 @@ export const productsApi = baseApi.injectEndpoints({
         url: 'products/all',
         method: 'GET',
       }),
+      providesTags: ['Products'],
     }),
     getAvailableProducts: builder.query<Product[], void>({
       query: () => ({
         url: 'products/available',
         method: 'GET',
       }),
+      providesTags: ['Products'],
     }),
     filterProducts: builder.query<
       FilterProductsResponse,
@@ -56,7 +58,7 @@ export const productsApi = baseApi.injectEndpoints({
           pageSize,
         },
       }),
-      providesTags: [{ type: 'Products' } as any],
+      providesTags: ['Products'],
     }),
     // ...existing code...
         getAttributeGroups: builder.mutation<AttributeGroup[], { categoryId: number; productIds?: number[]; selectedAttrsIds?: number[] }>({
@@ -75,6 +77,7 @@ export const productsApi = baseApi.injectEndpoints({
         url: `products/${id}`,
         method: 'GET',
       }),
+      providesTags: ['Products'],
     }),
     searchProducts: builder.query<Product[], { query: string; page?: number; pageSize?: number }>({
       query: ({ query, page = 1, pageSize = 20 }) => ({
@@ -85,6 +88,7 @@ export const productsApi = baseApi.injectEndpoints({
           pageSize,
         },
       }),
+      providesTags: ['Products'],
     }),
   }),
 });
