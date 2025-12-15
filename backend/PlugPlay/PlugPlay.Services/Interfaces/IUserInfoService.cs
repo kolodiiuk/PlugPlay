@@ -10,6 +10,8 @@ namespace PlugPlay.Services.Interfaces
 
         Task<bool> UpdateUserAsync(int userId, UserInfoDto dto);
 
+        Task<Result<IEnumerable<User>>> GetAllUsersInfo();
+
         Task<Result<User>> GetUserByTokenAsync(string token);
     }
 }

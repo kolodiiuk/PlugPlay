@@ -1,3 +1,4 @@
+using LinqKit;
 using Microsoft.AspNetCore.Mvc;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
@@ -89,6 +90,49 @@ public class UserInfoController : ControllerBase
         UserInfoDto userInfo = UserInfoDto.MapUser(user);
 
         return Ok(userInfo);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAllUsersInfo()
+    {
+        var gettingUserInfo = LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(3000, "GettingUserInfo"),
+            "Getting user info");
+
+        gettingUserInfo(_logger, null);
+
+        var result = await _userInfoService.GetAllUsersInfo();
+
+        result.OnSuccess(() =>
+        {
+            var userInfoRetrieved = LoggerMessage.Define(
+                LogLevel.Information,
+                new EventId(3002, "UserInfoRetrieved"),
+                "Successfully retrieved user info");
+
+            userInfoRetrieved(_logger, null);
+        });
+
+        result.OnFailure(() =>
+        {
+            var userNotFound = LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(3001, "UserNotFound"),
+                "Users not found");
+
+            userNotFound(_logger, null);
+        });
+
+        if (result.Failure)
+        {
+            return NotFound(new { message = result.Error });
+        }
+
+        IEnumerable<User> users = result.Value;
+        IEnumerable<UserInfoDto> allUserInfo = users.Select((u) => UserInfoDto.MapUser(u));
+
+        return Ok(allUserInfo);
     }
 
     [HttpPut("{id:int}")]
