@@ -1,17 +1,18 @@
 import { Order } from '../../models/Order';
-import { OrderStatusInfo } from '../../models/enums/OrderStatus';
+import { OrderStatusInfo, ORDER_STATUS_TRANSITIONS } from '../../models/enums/OrderStatus';
 //import { mockCustomerNames } from '../../data/mockAdminData';
 import { Eye, X } from 'lucide-react';
 import OrderStatus from '../../models/enums/OrderStatus';
 
 interface OrdersTableProps {
     orders: Order[];
-    onView: (order: Order) => void;
-    onCancel: (order: Order) => void;
     userNamesById: Record<number, string>;
+    onView: (order: Order) => void;
+    onCancel: (orderId: number) => void;
+    onChangeStatus: (orderId: number, status: OrderStatus) => void;
 }
 
-const OrdersTable = ({ orders, userNamesById, onView, onCancel }: OrdersTableProps) => {
+const OrdersTable = ({ orders, userNamesById, onView, onCancel, onChangeStatus }: OrdersTableProps) => {
     const formatCurrency = (amount: number) => {
         return `${amount.toFixed(2)} ₴`;
     };
@@ -28,11 +29,6 @@ const OrdersTable = ({ orders, userNamesById, onView, onCancel }: OrdersTablePro
     const getStatusColor = (status: number) => {
         const statusInfo = OrderStatusInfo[status as keyof typeof OrderStatusInfo];
         return statusInfo?.displayColor || 'bg-gray-100 text-gray-700';
-    };
-
-    const getStatusLabel = (status: number) => {
-        const statusInfo = OrderStatusInfo[status as keyof typeof OrderStatusInfo];
-        return statusInfo?.label || 'Unknown';
     };
 
     const canCancelOrder = (status: number) => {
@@ -83,13 +79,20 @@ const OrdersTable = ({ orders, userNamesById, onView, onCancel }: OrdersTablePro
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <select
                                         value={order.status}
+                                        onChange={(e) => {
+                                            const newStatus = e.target.value as unknown as OrderStatus;
+                                            if(order.status != newStatus) {
+                                                 onChangeStatus(order.id, newStatus);
+                                            }
+                                        }}
+                                        disabled={ORDER_STATUS_TRANSITIONS[order.status].length == 0}
                                         className={`px-3 py-1 text-xs font-medium rounded-full border-0 focus:ring-2 focus:ring-blue-500 ${getStatusColor(order.status)}`}
                                     >
-                                        <option value={OrderStatus.Created}>Created</option>
-                                        <option value={OrderStatus.Approved}>Approved</option>
-                                        <option value={OrderStatus.Collected}>Collected</option>
-                                        <option value={OrderStatus.Delivered}>Delivered</option>
-                                        <option value={OrderStatus.Cancelled}>Cancelled</option>
+                                        {(ORDER_STATUS_TRANSITIONS[order.status] ?? []).map(status => (
+                                            <option key={status} value={status}>
+                                                {OrderStatusInfo[status].label}
+                                            </option>
+                                        ))}
                                     </select>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -103,7 +106,7 @@ const OrdersTable = ({ orders, userNamesById, onView, onCancel }: OrdersTablePro
                                         </button>
                                         {canCancelOrder(order.status) && (
                                             <button
-                                                onClick={() => onCancel(order)}
+                                                onClick={() => onCancel(order.id)}
                                                 className="text-red-600 hover:text-red-800 transition-colors"
                                                 title="Cancel order"
                                             >

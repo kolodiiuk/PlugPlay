@@ -33,5 +33,24 @@ export const OrderStatusInfo: Record<OrderStatus, {
   },
 };
 
+export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  [OrderStatus.Created]: [
+    OrderStatus.Created,
+    OrderStatus.Approved,
+  ],
+
+  [OrderStatus.Approved]: [
+    OrderStatus.Approved,
+    OrderStatus.Delivered,
+  ],
+
+  [OrderStatus.Delivered]: [
+    OrderStatus.Delivered
+  ],
+
+  [OrderStatus.Collected]: [OrderStatus.Collected],
+
+  [OrderStatus.Cancelled]: [OrderStatus.Cancelled]
+};
 export default OrderStatus;
 

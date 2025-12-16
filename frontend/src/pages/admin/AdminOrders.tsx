@@ -73,15 +73,31 @@ const AdminOrders = () => {
         setIsDetailsModalOpen(true);
     };
 
-    const handleCancelOrder = (order: Order) => {
-        console.log('Cancel order:', order);
+    const handleCancelOrder = async (orderId: number) => {
+        try {
+            await cancelOrder(orderId).unwrap()
+        }
+        catch(err) {
+            alert("Something went wrong when canceling the order");
+        }
     };
 
-    if (isLoadingOrders || isLoadingUsers) {
+    const handleChangeStatus= async (orderId: number, status: OrderStatus) => {
+        try {
+            const n = Number(status);
+            console.log({orderId, n});
+            await updateOrderStatus({orderId, status}).unwrap()
+        }
+        catch(err) {
+            alert("Something went wrong when changing the order status");
+        }
+    };
+
+    if (isLoadingOrders || isLoadingUsers || isLoadingProducts) {
         return LoadingMessage("products control page");
     }
 
-    if (isOrderError || isUsersError) {
+    if (isOrderError || isUsersError || isProductsError) {
         return ErrorMessage("error loading products control page", "couldn't retrieve data from the database")
     }
 
@@ -121,6 +137,7 @@ const AdminOrders = () => {
                 orders={filteredOrders}
                 onView={handleViewOrder}
                 onCancel={handleCancelOrder}
+                onChangeStatus={handleChangeStatus}
                 userNamesById={userNamesById}
             />
 
