@@ -4,12 +4,13 @@ import OrdersTable from '../../components/admin/OrdersTable';
 import OrderDetailsModal from '../../components/admin/OrderDetailsModal';
 import { Order } from '../../models/Order';
 import OrderStatus from '../../models/enums/OrderStatus';
-import { useCancelOrderAdminMutation, useGetAllOrdersQuery, useUpdateOrderStatusMutation } from '../../api/adminOrderApi';
+import { useCancelOrderAdminMutation, useGetAllOrdersQuery, useUpdateOrderStatusMutation, useUpdatePaymentStatusMutation } from '../../api/adminOrderApi';
 import LoadingMessage from '../../components/common/LoadingMessage';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { useGetAllUsersQuery } from '../../api/userInfoApi';
 import { useGetAllProductsQuery } from '../../api/productsApi';
 import { OrderItemWithDetails } from '../../models/Order';
+import PaymentStatus from '../../models/enums/PaymentStatus';
 
 const AdminOrders = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +55,7 @@ const AdminOrders = () => {
 
     const [cancelOrder] = useCancelOrderAdminMutation();
     const [updateOrderStatus] = useUpdateOrderStatusMutation();
+    const [updatePaymentStatus] = useUpdatePaymentStatusMutation();
 
     const filteredOrders = enrichedOrders.filter(order => {
         const matchesSearch =
@@ -84,12 +86,21 @@ const AdminOrders = () => {
 
     const handleChangeStatus= async (orderId: number, status: OrderStatus) => {
         try {
-            const n = Number(status);
-            console.log({orderId, n});
             await updateOrderStatus({orderId, status}).unwrap()
         }
         catch(err) {
             alert("Something went wrong when changing the order status");
+        }
+    };
+
+    const handleChangePaymentStatus= async (orderId: number, paymentStatus: PaymentStatus) => {
+        try {
+
+            console.log({orderId, paymentStatus: Number((paymentStatus))})
+            await updatePaymentStatus({orderId, paymentStatus: Number(paymentStatus)}).unwrap()
+        }
+        catch(err) {
+            alert("Something went wrong when changing the order payment status");
         }
     };
 
@@ -138,6 +149,7 @@ const AdminOrders = () => {
                 onView={handleViewOrder}
                 onCancel={handleCancelOrder}
                 onChangeStatus={handleChangeStatus}
+                onChangePaymentStatus={handleChangePaymentStatus}
                 userNamesById={userNamesById}
             />
 

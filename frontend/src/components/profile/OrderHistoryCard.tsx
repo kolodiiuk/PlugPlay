@@ -4,7 +4,7 @@ import {Order} from '../../models/Order';
 import DeliveryMethod, {DeliveryMethodInfo} from '../../models/enums/DeliveryMethod';
 import PaymentMethod, {PaymentMethodInfo} from '../../models/enums/PaymentMethod';
 import OrderStatus, { OrderStatusInfo } from '../../models/enums/OrderStatus';
-import {PaymenStatusInfo} from '../../models/enums/PaymentStatus';
+import {PaymentStatusInfo} from '../../models/enums/PaymentStatus';
 import {Address} from '../../models/Address';
 
 interface OrderHistoryCardProps {
@@ -129,7 +129,7 @@ export default function OrderHistoryCard({ order, onCancelOrder, addresses }: Or
 
                     <div>
                         <p className="text-xs text-gray-500 mb-1">Payment Status</p>
-                        <p className="text-sm text-gray-900">{PaymenStatusInfo[order.paymentStatus].label}</p>
+                        <p className="text-sm text-gray-900">{PaymentStatusInfo[order.paymentStatus].label}</p>
                     </div>
 
                     <div>

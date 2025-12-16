@@ -74,9 +74,7 @@ export const adminProductApi = baseApi.injectEndpoints({
       },
       invalidatesTags: ["Products"],
     }),
-
   }),
-
 });
 
 export const {

@@ -29,7 +29,10 @@ export const adminOrderApi = baseApi.injectEndpoints({
       query: ({ orderId, paymentStatus }) => ({
         url: `admin/order/payment-status/${orderId}`,
         method: "PUT",
-        body: paymentStatus
+        body: paymentStatus,
+        headers: {
+          "Content-Type": "application/json"
+        }
       }),
       invalidatesTags: ["Orders"]
     }),

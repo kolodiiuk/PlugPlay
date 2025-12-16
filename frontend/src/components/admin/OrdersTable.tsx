@@ -3,6 +3,8 @@ import { OrderStatusInfo, ORDER_STATUS_TRANSITIONS } from '../../models/enums/Or
 //import { mockCustomerNames } from '../../data/mockAdminData';
 import { Eye, X } from 'lucide-react';
 import OrderStatus from '../../models/enums/OrderStatus';
+import PaymentStatus, {PaymentStatusInfo, PAYMENT_STATUSES} from '../../models/enums/PaymentStatus';
+import PaymentMethod from '../../models/enums/PaymentMethod';
 
 interface OrdersTableProps {
     orders: Order[];
@@ -10,9 +12,10 @@ interface OrdersTableProps {
     onView: (order: Order) => void;
     onCancel: (orderId: number) => void;
     onChangeStatus: (orderId: number, status: OrderStatus) => void;
+    onChangePaymentStatus: (orderId: number, status: PaymentStatus) => void;
 }
 
-const OrdersTable = ({ orders, userNamesById, onView, onCancel, onChangeStatus }: OrdersTableProps) => {
+const OrdersTable = ({ orders, userNamesById, onView, onCancel, onChangeStatus, onChangePaymentStatus}: OrdersTableProps) => {
     const formatCurrency = (amount: number) => {
         return `${amount.toFixed(2)} ₴`;
     };
@@ -56,6 +59,9 @@ const OrdersTable = ({ orders, userNamesById, onView, onCancel, onChangeStatus }
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Order Status
                             </th>
+                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Payment Status
+                            </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
                             </th>
@@ -85,12 +91,30 @@ const OrdersTable = ({ orders, userNamesById, onView, onCancel, onChangeStatus }
                                                  onChangeStatus(order.id, newStatus);
                                             }
                                         }}
-                                        disabled={ORDER_STATUS_TRANSITIONS[order.status].length == 0}
                                         className={`px-3 py-1 text-xs font-medium rounded-full border-0 focus:ring-2 focus:ring-blue-500 ${getStatusColor(order.status)}`}
                                     >
                                         {(ORDER_STATUS_TRANSITIONS[order.status] ?? []).map(status => (
                                             <option key={status} value={status}>
                                                 {OrderStatusInfo[status].label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <select
+                                        value={order.paymentStatus}
+                                        disabled={order.paymentMethod === PaymentMethod.Card}
+                                        onChange={(e) => {
+                                            const newStatus = e.target.value as unknown as PaymentStatus;
+                                            if(order.paymentStatus != newStatus) {
+                                                 onChangePaymentStatus(order.id, newStatus);
+                                            }
+                                        }}
+                                        className={`px-3 py-1 text-xs font-medium rounded-full border-0 focus:ring-2 focus:ring-blue-500 bg-green-100 text-gray-700`}
+                                    >
+                                        {PAYMENT_STATUSES.map(status => (
+                                            <option key={status} value={status}>
+                                                {PaymentStatusInfo[status].label}
                                             </option>
                                         ))}
                                     </select>

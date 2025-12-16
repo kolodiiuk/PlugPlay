@@ -6,7 +6,7 @@ enum PaymentStatus
   NotPaid = 3,
 }
 
-export const PaymenStatusInfo: Record<PaymentStatus, {
+export const PaymentStatusInfo: Record<PaymentStatus, {
   label: string;
 }> = {
   [PaymentStatus.Paid]: {
@@ -22,5 +22,7 @@ export const PaymenStatusInfo: Record<PaymentStatus, {
     label: "Not paid",
   },
 }
+
+export const PAYMENT_STATUSES = [PaymentStatus.Paid, PaymentStatus.Failed, PaymentStatus.TestPaid, PaymentStatus.NotPaid]
 
 export default PaymentStatus;
