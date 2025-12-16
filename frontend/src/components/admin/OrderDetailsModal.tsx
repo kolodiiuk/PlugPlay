@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import { Order } from '../../models/Order';
 import { OrderStatusInfo } from '../../models/enums/OrderStatus';
 import { DeliveryMethodInfo } from '../../models/enums/DeliveryMethod';
-import { PaymentMethodInfo } from '../../models/enums/PaymentMethod';
+import PaymentMethod, { PaymentMethodInfo } from '../../models/enums/PaymentMethod';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;
@@ -41,8 +41,18 @@ const OrderDetailsModal = ({ isOpen, onClose, order, userName }: OrderDetailsMod
     };
 
     const getSubtotal = () => {
+        if(order.paymentMethod == PaymentMethod.Card) {
+            return order.totalAmount;
+        }
         return order.totalAmount - getDeliveryPrice();
     };
+
+    const getTotal  = () => {
+        if(order.paymentMethod == PaymentMethod.Card) {
+            return order.totalAmount + getDeliveryPrice();
+        }
+        return order.totalAmount;
+    }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -81,7 +91,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order, userName }: OrderDetailsMod
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 mb-1">Total Amount</p>
-                            <p className="text-sm font-semibold text-gray-900">{formatCurrency(order.totalAmount)}</p>
+                            <p className="text-sm font-semibold text-gray-900">{formatCurrency(getTotal())}</p>
                         </div>
                     </div>
 
@@ -136,7 +146,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order, userName }: OrderDetailsMod
                         </div>
                         <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-200">
                             <span className="text-gray-900">Total</span>
-                            <span className="text-gray-900">{formatCurrency(order.totalAmount)}</span>
+                            <span className="text-gray-900">{formatCurrency(getTotal())}</span>
                         </div>
                     </div>
                 </div>
