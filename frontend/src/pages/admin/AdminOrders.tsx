@@ -23,7 +23,7 @@ const AdminOrders = () => {
           data: products,
           isLoading: isLoadingProducts,
           isError: isProductsError,
-      } = useGetAllProductsQuery();
+    } = useGetAllProductsQuery();
 
     const enrichedOrders = useMemo(() => {
         if (!orders || !products) return [];

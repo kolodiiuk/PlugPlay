@@ -1,13 +1,13 @@
 import { Order } from '../../models/Order';
 import { OrderStatusInfo } from '../../models/enums/OrderStatus';
-import { mockCustomerNames } from '../../data/mockAdminData';
 import { ShoppingBag } from 'lucide-react';
 
 interface RecentOrdersTableProps {
     orders: Order[];
+    userNamesById: Record<number, string>
 }
 
-const RecentOrdersTable = ({ orders }: RecentOrdersTableProps) => {
+const RecentOrdersTable = ({ orders, userNamesById }: RecentOrdersTableProps) => {
     const formatCurrency = (amount: number) => {
         return `${amount.toFixed(2)} ₴`;
     };
@@ -55,12 +55,12 @@ const RecentOrdersTable = ({ orders }: RecentOrdersTableProps) => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-semibold text-gray-900">Order #{order.id}</p>
-                                            <p className="text-xs text-gray-500">{mockCustomerNames[order.userId as number]}</p>
+                                            <p className="text-xs text-gray-500">{userNamesById[order.userId as number]}</p>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <p className="text-sm text-gray-900">{mockCustomerNames[order.userId as number]}</p>
+                                    <p className="text-sm text-gray-900">{userNamesById[order.userId as number]}</p>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(order.status)}`}>
