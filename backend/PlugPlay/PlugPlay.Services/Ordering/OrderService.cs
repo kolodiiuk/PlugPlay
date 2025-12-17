@@ -174,6 +174,35 @@ public class OrderService : BaseService<OrderService>, IOrderService
         }
     }
 
+    public async Task<Result<IEnumerable<Order>>> GetAllOrdersAsync()
+    {
+        try
+        {
+            var orders = await Context.Orders
+                .Include(o => o.User)
+                .Include(o => o.DeliveryAddress)
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .ThenInclude(p => p.ProductAttributes)
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .ThenInclude(p => p.ProductImages)
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .ThenInclude(p => p.Category)
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .ToListAsync();
+
+            return Result.Success<IEnumerable<Order>>(orders);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<IEnumerable<Order>>(
+                $"Exception thrown retrieving orders. Message: {e.Message}");
+        }
+    }
+
     public async Task<Result<Order>> GetOrderAsync(int orderId)
     {
         try

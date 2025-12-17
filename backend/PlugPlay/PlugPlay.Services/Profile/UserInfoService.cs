@@ -66,6 +66,48 @@ public class UserInfoService : IUserInfoService
         }
     }
 
+    public async Task<Result<IEnumerable<User>>> GetAllUsersInfo()
+    {
+        var fetchingUserInfo = LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(3000, "FetchingUserInfo"),
+            "Fetching user info");
+
+        fetchingUserInfo(_logger, null);
+
+        try
+        {
+            var userInfo = await _userManager.Users
+                .Include(u => u.UserAddresses)
+                .ToListAsync();
+
+            if (userInfo == null)
+            {
+                var usersNotFoundWarning= LoggerMessage.Define(
+                    LogLevel.Warning,
+                    new EventId(3001, "UserNotFoundWarningById"),
+                    "Users not found");
+
+                usersNotFoundWarning(_logger, null);
+
+                return Result.Fail<IEnumerable<User>>("Users not found");
+            }
+
+            var userInfoRetrievedSuccess = LoggerMessage.Define(
+                LogLevel.Information,
+                new EventId(3002, "UserInfoRetrievedSuccess"),
+                "Successfully retrieved user info");
+
+            userInfoRetrievedSuccess(_logger, null);
+
+            return Result.Success<IEnumerable<User>>(userInfo);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<IEnumerable<User>>(e.Message);
+        }
+    }
+
     public async Task<bool> UpdateUserAsync(int id, UserInfoDto dto)
     {
         var updatingUserInfo = LoggerMessage.Define<int>(

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Search, LogOut, Heart, Menu } from 'lucide-react';
+import { ShoppingCart, User, Search, LogOut, Heart, Menu, Cog } from 'lucide-react';
 import logoUrl from '../../../assets/logo.svg';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
@@ -8,6 +8,8 @@ import { useCartContext } from '../../context/CartContext.tsx';
 import { useAppDispatch, useAppSelector } from '../../app/configureStore';
 import { setSearchQuery } from '../../app/slices/filterSlice';
 import WishlistModal from './WishlistModal.tsx';
+import { Role } from '../../models/enums/Role.ts';
+import { storage } from '../../utils/StorageService.ts';
 
 interface HeaderProps {
   onCategorySelect: (categoryId: number | null) => void;
@@ -36,6 +38,7 @@ export default function Header({ onCategorySelect }: HeaderProps) {
   const handleSignOut = async () => {
     await logout();
     closeCart();
+    console.log(user ?? "No user")
 
     navigate('/signin');
   };
@@ -61,6 +64,36 @@ export default function Header({ onCategorySelect }: HeaderProps) {
   const handleLogoBtnClick = () => {
     handleCategorySelect(2147483647);
   };
+
+  const verifyIsAdmin = () : boolean => {
+    const token = storage.getAccessToken();
+
+    if (!token) {
+      return false;
+    }
+
+    const claim = getUserRoleFromToken(token);
+
+    return (claim !== null && claim == "Admin");
+  }
+
+  const getUserRoleFromToken = (token: string): string | null => {
+    try {
+      const payloadBase64 = token.split(".")[1];
+      const payloadJson = atob(payloadBase64);
+      const payload = JSON.parse(payloadJson);
+
+      // Common claim names
+      return (
+        payload.role ||
+        payload.roles ||
+        payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
+        null
+      );
+    } catch {
+      return null;
+    }
+};
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -99,7 +132,14 @@ export default function Header({ onCategorySelect }: HeaderProps) {
           </div>
 
           <div className="flex items-center space-x-4">
-            {user && (<button
+            {user && verifyIsAdmin() && (<button
+              onClick={() => navigate("/admin")}
+              className="p-2 text-gray-700 hover:text-black transition-colors"
+            >
+              <Cog className="w-6 h-6" />
+            </button>)
+            }
+            {user && !verifyIsAdmin() && (<button
               onClick={() => setIsWishlistOpen(true)}
               className="p-2 text-gray-700 hover:text-black transition-colors"
             >

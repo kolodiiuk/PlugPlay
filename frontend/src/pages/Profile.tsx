@@ -99,7 +99,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (tokenUser && !isEditing) {
-      console.log(tokenUser);
+      //console.log(tokenUser);
 
       setFirstName(tokenUser.firstName);
       setLastName(tokenUser.lastName);

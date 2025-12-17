@@ -10,6 +10,12 @@ export const userInfoApi = baseApi.injectEndpoints({
         method: 'GET',
       }),
     }),
+    getAllUsers: builder.query<User[], void>({
+      query: () => ({
+        url: `userinfo/`,
+        method: 'GET',
+      }),
+    }),
     updateUserByToken: builder.mutation<UpdateProfileResponse, UpdateProfileRequest>({
       query: ({token, ...body}) => ({
         url: `userinfo/${token}`,
@@ -25,7 +31,8 @@ export const userInfoApi = baseApi.injectEndpoints({
 
 export const {
   useGetUserByTokenQuery,
-  useUpdateUserByTokenMutation
+  useUpdateUserByTokenMutation,
+  useGetAllUsersQuery,
 } = userInfoApi;
 
 interface UpdateProfileRequest {

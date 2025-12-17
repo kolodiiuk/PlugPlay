@@ -19,4 +19,6 @@ internal static class AdminOrderControllerEventIds
     internal static readonly EventId CancelOrderSuccessAdmin = new(6010, nameof(CancelOrderSuccessAdmin));
 
     internal static readonly EventId CancelOrderFailedAdmin = new(6011, nameof(CancelOrderFailedAdmin));
+
+    internal static readonly EventId GetAlLOrdersAdmin = new(6012, nameof(GetAlLOrdersAdmin));
 }

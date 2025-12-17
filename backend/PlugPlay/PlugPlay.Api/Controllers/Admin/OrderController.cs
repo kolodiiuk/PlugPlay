@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PlugPlay.Services.Interfaces;
+using PlugPlay.Api.Dto.Ordering;
 using PlugPlay.Api.Logging;
 using PlugPlay.Domain.Enums;
 using PlugPlay.Domain.Extensions;
+using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers.Admin;
 
@@ -113,5 +114,44 @@ public class OrderController : BaseController<OrderController>
             Title = "Order operation failed",
             Detail = error
         });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAllOrders()
+    {
+        Log( LogLevel.Information,
+            AdminOrderControllerEventIds.GetAlLOrdersAdmin,
+            "Retrieving orders.");
+
+        var userOrdersRes = await _orderService.GetAllOrdersAsync();
+
+        userOrdersRes
+            .OnSuccess(() =>
+            {
+                var orderCount = userOrdersRes.Value.Count();
+                Log(LogLevel.Information,
+                    AdminOrderControllerEventIds.GetAlLOrdersAdmin,
+                    "Retrieving orders.");
+
+            })
+            .OnFailure(() =>
+            {
+                Log(LogLevel.Information,
+                   AdminOrderControllerEventIds.GetAlLOrdersAdmin,
+                   "Retrieved orders.");
+            });
+
+        if (userOrdersRes.Failure)
+        {
+            return StatusCode(404, userOrdersRes.Error);
+        }
+
+        List<OrderDto> orderDtos = [];
+        foreach (var order in userOrdersRes.Value)
+        {
+            orderDtos.Add(OrderDto.MapOrder(order));
+        }
+
+        return StatusCode(200, orderDtos);
     }
 }
