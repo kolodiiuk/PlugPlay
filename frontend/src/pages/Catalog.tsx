@@ -113,7 +113,7 @@ const Catalog = () => {
     );
   }
 
-  if (isError || isWishListError) {
+  if (isError) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -225,7 +225,7 @@ const Catalog = () => {
                       reviewCount={10}
                       image={product.pictureUrls[0]}
                       isFavorite={WishListIds.includes(product.id)}
-                      canAddToFavorite={isAuthenticated}
+                      canAddToFavorite={isAuthenticated && !isWishListError}
                       onToggleFavorite={handleChangeWishList}
                       onClick={handleProductClick}
                     />

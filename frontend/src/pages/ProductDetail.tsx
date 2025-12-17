@@ -42,7 +42,7 @@ const ProductDetail = () => {
   const addToCart = cartService.useAddToCart(user?.id);
   const {isCartOpen, openCart} = useCartContext();
 
-  const {data: isInWishList = false} = useIsInWishlistQuery(productId, {
+  const {data: isInWishList = false, isError: isWishListError} = useIsInWishlistQuery(productId, {
         skip: !user,});
   const [addToWishList] = useAddToWishlistMutation();
   const [removeWishListItem] = useRemoveWishlistItemMutation();
@@ -235,7 +235,7 @@ const ProductDetail = () => {
 
               <button
                 onClick={handleWishListChange}
-                disabled={!user}
+                disabled={!user || isWishListError}
                 className={`p-3 rounded-lg border-2 transition-all ${
                   isInWishList
                     ? 'bg-red-50 border-red-500 text-red-500'
