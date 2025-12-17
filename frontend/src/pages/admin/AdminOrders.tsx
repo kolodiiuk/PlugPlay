@@ -95,8 +95,6 @@ const AdminOrders = () => {
 
     const handleChangePaymentStatus= async (orderId: number, paymentStatus: PaymentStatus) => {
         try {
-
-            console.log({orderId, paymentStatus: Number((paymentStatus))})
             await updatePaymentStatus({orderId, paymentStatus: Number(paymentStatus)}).unwrap()
         }
         catch(err) {

@@ -1,6 +1,5 @@
 import { Order } from '../../models/Order';
 import { OrderStatusInfo, ORDER_STATUS_TRANSITIONS } from '../../models/enums/OrderStatus';
-//import { mockCustomerNames } from '../../data/mockAdminData';
 import { Eye, X } from 'lucide-react';
 import OrderStatus from '../../models/enums/OrderStatus';
 import PaymentStatus, {PaymentStatusInfo, PAYMENT_STATUSES} from '../../models/enums/PaymentStatus';
