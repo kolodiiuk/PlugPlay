@@ -1,23 +1,29 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import {createApi, fetchBaseQuery} from '@reduxjs/toolkit/query/react';
 import {storage} from "../utils/StorageService.ts";
 
-export const API_BASE_URL = 'https://plugplay.dev1.dev'; // port may be different
+export const API_BASE_URL = 'https://plugplay.dev1.dev';
 
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
     baseUrl: `${API_BASE_URL}/api`,
-    prepareHeaders: (headers) => {
+    prepareHeaders: (headers, api) => {
       const token = storage.getAccessToken();
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
 
-      if (!headers.has('Content-Type')) {
-        headers.set('Content-Type', 'application/json');
+      const skipJsonContentType = [
+        "uploadProductImage",  
+      ];
+
+      if (!skipJsonContentType.includes(api.endpoint)) {
+        headers.set("Content-Type", "application/json");
       }
+
       return headers;
     },
   }),
+  tagTypes: ["Wishlist", "Cart", "Products", "Orders"],
   endpoints: () => ({}),
 });
