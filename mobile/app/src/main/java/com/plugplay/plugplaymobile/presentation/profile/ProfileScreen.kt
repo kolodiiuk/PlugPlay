@@ -8,213 +8,83 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Visibility // [НОВИЙ ІМПОРТ]
-import androidx.compose.material.icons.filled.VisibilityOff // [НОВИЙ ІМПОРТ]
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation // [НОВИЙ ІМПОРТ]
-import androidx.compose.ui.text.input.VisualTransformation // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.plugplay.plugplaymobile.presentation.auth.AuthViewModel
 import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.usecase.GetProfileUseCase
-import com.plugplay.plugplaymobile.domain.usecase.UpdateProfileUseCase
-import androidx.lifecycle.ViewModel
-import com.plugplay.plugplaymobile.R // [НОВИЙ ІМПОРТ]
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-import dagger.hilt.android.lifecycle.HiltViewModel
-
-// [STATE] (Залишається без змін)
-data class ProfileState(
-    val profile: UserProfile? = null,
-    val isLoading: Boolean = false,
-    val isUpdating: Boolean = false,
-    val error: String? = null,
-    val updateSuccess: Boolean = false
-)
-
-// [VIEWMODEL] (Залишається без змін)
-@HiltViewModel
-class ProfileViewModel @Inject constructor(
-    private val getProfileUseCase: GetProfileUseCase,
-    private val updateProfileUseCase: UpdateProfileUseCase,
-) : ViewModel() {
-
-    private val _state = MutableStateFlow(ProfileState())
-    val state: StateFlow<ProfileState> = _state.asStateFlow()
-
-    init { }
-
-    fun onAuthStatusChanged(isLoggedIn: Boolean) {
-        if (isLoggedIn && _state.value.profile == null && !_state.value.isLoading) {
-            loadProfile()
-        } else if (!isLoggedIn) {
-            _state.value = ProfileState()
-        }
-    }
-
-    fun loadProfile() {
-        _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
-            getProfileUseCase()
-                .onSuccess { profile ->
-                    _state.update { it.copy(profile = profile, isLoading = false) }
-                }
-                .onFailure { throwable ->
-                    _state.update { it.copy(isLoading = false, error = throwable.message ?: "Помилка завантаження профілю.") }
-                }
-        }
-    }
-
-    fun updateProfile(
-        firstName: String,
-        lastName: String,
-        phoneNumber: String,
-        email: String,
-        currentPassword: String? = null,
-        newPassword: String? = null
-    ) {
-        _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
-        viewModelScope.launch {
-            updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword)
-                .onSuccess { updatedProfile ->
-                    _state.update {
-                        it.copy(
-                            profile = updatedProfile,
-                            isUpdating = false,
-                            updateSuccess = true
-                        )
-                    }
-                }
-                .onFailure { throwable ->
-                    _state.update {
-                        it.copy(
-                            isUpdating = false,
-                            error = throwable.message ?: "Помилка оновлення профілю."
-                        )
-                    }
-                }
-        }
-    }
-
-    fun resetUpdateState() {
-        _state.update { it.copy(updateSuccess = false, error = null) }
-    }
-}
+import com.plugplay.plugplaymobile.domain.model.UserAddress
+import com.plugplay.plugplaymobile.domain.model.Order
+import com.plugplay.plugplaymobile.domain.model.OrderItem
+import com.plugplay.plugplaymobile.domain.model.OrderStatus
+import com.plugplay.plugplaymobile.domain.model.DeliveryMethod
+import com.plugplay.plugplaymobile.domain.model.PaymentMethod
+import com.plugplay.plugplaymobile.domain.model.PaymentStatus
+import java.text.NumberFormat
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.time.format.FormatStyle
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onNavigateToCatalog: () -> Unit, // Назад
+    onNavigateToCatalog: () -> Unit,
     onNavigateToLogin: () -> Unit,
+    onNavigateToWishlist: () -> Unit,
     authViewModel: AuthViewModel = hiltViewModel(),
     profileViewModel: ProfileViewModel = hiltViewModel()
 ) {
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val profileState by profileViewModel.state.collectAsState()
 
+    val profile = profileState.profile
+    val orders = profileState.orders
+
+    val isEditingCredentials = remember { mutableStateOf(false) }
+    val openSection = remember { mutableStateOf("") }
+
+    // --- ЛОГІКА: Закриваємо форму редагування після успішного збереження ---
+    LaunchedEffect(profileState.updateSuccess) {
+        if (profileState.updateSuccess) {
+            // Якщо була відкрита форма редагування профілю - закриваємо її
+            if (isEditingCredentials.value) {
+                isEditingCredentials.value = false
+                profileViewModel.resetUpdateState()
+                profileViewModel.onAuthStatusChanged(true) // Оновлюємо дані
+            }
+        }
+    }
+    // ---------------------------------------------------------------------------
+
     LaunchedEffect(isLoggedIn) {
         profileViewModel.onAuthStatusChanged(isLoggedIn)
     }
 
-    // --- [НОВА ЛОГІКА] ---
-    // Поля тепер завжди редаговані, їх стан зберігається тут
-    val firstName = remember { mutableStateOf("") }
-    val lastName = remember { mutableStateOf("") }
-    val phone = remember { mutableStateOf("") }
-    val email = remember { mutableStateOf("") }
-    val currentPassword = remember { mutableStateOf("") }
-    val newPassword = remember { mutableStateOf("") }
-    val confirmNewPassword = remember { mutableStateOf("") }
-
-    // Стан для секцій, "My Account" відкрита за замовчуванням
-    val openSection = remember { mutableStateOf("My Account") }
-
-    // Функція для скидання полів до оригінальних значень
-    fun resetFields() {
-        profileState.profile?.let { profile ->
-            firstName.value = profile.firstName
-            lastName.value = profile.lastName
-            phone.value = profile.phoneNumber
-            email.value = profile.email
-        }
-        currentPassword.value = ""
-        newPassword.value = ""
-        confirmNewPassword.value = ""
-        profileViewModel.resetUpdateState() // Скидаємо помилки
-    }
-
-    // Ініціалізація та скидання полів при зміні профілю
-    LaunchedEffect(profileState.profile) {
-        resetFields()
-    }
-
-    // Обробка успішного оновлення (скидаємо поля паролів)
-    LaunchedEffect(profileState.updateSuccess) {
-        if (profileState.updateSuccess) {
-            currentPassword.value = ""
-            newPassword.value = ""
-            confirmNewPassword.value = ""
-            profileViewModel.resetUpdateState()
-        }
-    }
-
-    val passwordsMatch = remember { derivedStateOf { newPassword.value == confirmNewPassword.value } }
-
-    // [НОВА ЛОГІКА] Кнопка "Save Changes" активна, якщо є зміни
-    val isSaveEnabled = remember {
-        derivedStateOf {
-            val profile = profileState.profile
-            val hasChanges = profile != null && (
-                    firstName.value != profile.firstName ||
-                            lastName.value != profile.lastName ||
-                            phone.value != profile.phoneNumber ||
-                            email.value != profile.email ||
-                            newPassword.value.isNotBlank()
-                    )
-
-            !profileState.isUpdating && hasChanges &&
-                    (!newPassword.value.isNotBlank() || (newPassword.value.length >= 8 && passwordsMatch.value && currentPassword.value.isNotBlank()))
-        }
-    }
-
-    // [НОВА ЛОГІКА] Обробник для "Save Changes"
-    fun onSaveClick() {
-        if (isSaveEnabled.value) {
-            val newPass = if (newPassword.value.isNotBlank() && currentPassword.value.isNotBlank() && passwordsMatch.value) newPassword.value else null
-            val currentPass = if (newPass != null) currentPassword.value else null
-
-            profileViewModel.updateProfile(
-                firstName = firstName.value,
-                lastName = lastName.value,
-                phoneNumber = phone.value,
-                email = email.value,
-                currentPassword = currentPass,
-                newPassword = newPass
-            )
-        }
-    }
-
     Scaffold(
-        containerColor = Color(0xFFF4F7F8), // Світло-сірий фон
+        containerColor = Color(0xFFF4F7F8),
         topBar = {
             TopAppBar(
                 title = { Text("Personal Information") },
@@ -226,61 +96,32 @@ fun ProfileScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        // [НОВА ЛОГІКА] Нижня панель з кнопками
-        bottomBar = {
-            if (isLoggedIn) {
-                BottomAppBar(
-                    containerColor = Color.White
-                ) {
-                    Button(
-                        onClick = { resetFields() },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Cancel")
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Button(
-                        onClick = { onSaveClick() },
-                        enabled = isSaveEnabled.value,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        if (profileState.isUpdating) {
-                            CircularProgressIndicator(Modifier.size(24.dp), color = Color.White)
-                        } else {
-                            Text("Save Changes")
-                        }
-                    }
-                }
-            }
-        }
     ) { padding ->
-        // --- [НОВИЙ МАКЕТ] ---
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-        ) {
-
-            // Якщо не залогінений
-            if (!isLoggedIn) {
-                item {
-                    NotLoggedInPlaceholder(onNavigateToLogin)
-                }
+        if (!isLoggedIn) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                NotLoggedInPlaceholder(onNavigateToLogin)
             }
-            // Якщо помилка завантаження
-            else if (profileState.isLoading) {
-                item {
-                    Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
+        } else if (profileState.isLoading || profile == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
-            // Якщо все добре, показуємо секції
-            else {
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+            ) {
                 item {
                     Text(
                         text = "Manage your personal details, delivery addresses, and account preferences",
@@ -290,80 +131,557 @@ fun ProfileScreen(
                     )
                 }
 
-                // --- Секції Акордеону ---
-
-                // 1. My Account
                 item {
                     ExpandableSection(
-                        title = "My Account",
-                        subtitle = "Account information and login credentials",
-                        isExpanded = openSection.value == "My Account",
-                        onClick = { openSection.value = "My Account" }
+                        title = "My Details & Contacts",
+                        subtitle = "Account information, email, and phone number",
+                        isExpanded = openSection.value == "My Details",
+                        onClick = {
+                            openSection.value =
+                                if (openSection.value == "My Details") "" else "My Details"
+                        },
+                        actionButton = {
+                            // Кнопка Edit відображається тільки якщо ми НЕ в режимі редагування
+                            if (!isEditingCredentials.value) {
+                                TextButton(
+                                    onClick = { isEditingCredentials.value = true },
+                                    enabled = !profileState.isUpdating
+                                ) {
+                                    Text("Edit")
+                                }
+                            }
+                        }
                     ) {
-                        // Контент для "My Account" (ваша стара логіка)
-                        MyAccountSection(
-                            firstName = firstName,
-                            lastName = lastName,
-                            phone = phone,
-                            email = email,
-                            currentPassword = currentPassword,
-                            newPassword = newPassword,
-                            confirmNewPassword = confirmNewPassword,
-                            passwordsMatch = passwordsMatch.value,
-                            error = profileState.error,
-                            onLogoutClick = { authViewModel.logout() }
+                        if (isEditingCredentials.value) {
+                            EditCredentialsForm(
+                                profile = profile,
+                                onSave = { fn, ln, ph, em ->
+                                    profileViewModel.updateProfile(fn, ln, ph, em); isEditingCredentials.value = false
+                                },
+                                onCancel = { isEditingCredentials.value = false },
+                                isUpdating = profileState.isUpdating
+                            )
+                        } else {
+                            DisplayCredentials(profile = profile)
+                        }
+                    }
+                }
+
+                item {
+                    ExpandableSection(
+                        title = "Delivery Addresses",
+                        subtitle = "Saved delivery addresses",
+                        isExpanded = openSection.value == "Delivery Addresses",
+                        onClick = {
+                            openSection.value =
+                                if (openSection.value == "Delivery Addresses") "" else "Delivery Addresses"
+                        }
+                    ) {
+                        AddressList(
+                            addresses = profile.addresses,
+                            onDeleteAddress = profileViewModel::deleteAddress,
+                            onEditAddress = profileViewModel::editAddress,
+                        )
+
+                        AddAddressForm(
+                            viewModel = profileViewModel,
+                            onAddressAdded = {
+                                openSection.value = ""
+                                profileViewModel.onAuthStatusChanged(true)
+                            }
                         )
                     }
                 }
 
-                // 2. Personal Data (Заглушка)
                 item {
                     ExpandableSection(
-                        title = "Personal Data",
-                        subtitle = "Gender, date of birth and personal details",
-                        isExpanded = openSection.value == "Personal Data",
-                        onClick = { openSection.value = "Personal Data" }
+                        title = "My orders",
+                        subtitle = "Your order history",
+                        isExpanded = openSection.value == "My Orders",
+                        onClick = {
+                            openSection.value =
+                                if (openSection.value == "My Orders") "" else "My Orders"
+                        }
                     ) {
-                        Text("Тут будуть налаштування персональних даних (стать, дата народження).", modifier = Modifier.padding(16.dp))
+                        if (profileState.isOrdersLoading) {
+                            Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        } else {
+                            OrderHistoryList(
+                                orders = orders,
+                                addresses = profile.addresses,
+                                onCancelOrder = profileViewModel::cancelOrder,
+                                isCancelling = profileState.isUpdating
+                            )
+                        }
                     }
                 }
 
-                // 3. Contacts (Заглушка)
                 item {
-                    ExpandableSection(
-                        title = "Contacts",
-                        subtitle = "Email addresses and phone numbers",
-                        isExpanded = openSection.value == "Contacts",
-                        onClick = { openSection.value = "Contacts" }
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable(onClick = onNavigateToWishlist),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
                     ) {
-                        Text("Тут буде керування контактними даними.", modifier = Modifier.padding(16.dp))
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("My Wishlist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.weight(1f))
+                            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
 
-                // ... і т.д. для інших секцій (Delivery Addresses...)
-
-                // --- Соціальні мережі ---
                 item {
-                    Spacer(Modifier.height(24.dp))
-                    SocialAccountsCard()
-                    Spacer(Modifier.height(24.dp)) // Додатковий відступ
+                    Spacer(Modifier.height(32.dp))
+                    OutlinedButton(
+                        onClick = { authViewModel.logout() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Вийти з акаунту", fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(Modifier.height(32.dp))
                 }
             }
         }
     }
 }
 
-// --- [НОВІ КОМПОНЕНТИ ДИЗАЙНУ] ---
+@Composable
+fun DisplayCredentials(profile: UserProfile) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("First Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(
+            text = profile.firstName.ifBlank { "—" },
+            fontSize = 16.sp,
+            color = Color.DarkGray
+        )
 
-/**
- * Компонент для секції, що розкривається (акордеон)
- */
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+
+        Text("Last Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(
+            text = profile.lastName.ifBlank { "—" },
+            fontSize = 16.sp,
+            color = Color.DarkGray
+        )
+
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+
+        Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(profile.phoneNumber.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+
+        Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(profile.email.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+    }
+}
+
+@Composable
+fun EditCredentialsForm(
+    profile: UserProfile,
+    onSave: (firstName: String, lastName: String, phoneNumber: String, email: String) -> Unit,
+    onCancel: () -> Unit,
+    isUpdating: Boolean
+) {
+    val firstName = remember { mutableStateOf(profile.firstName) }
+    val lastName = remember { mutableStateOf(profile.lastName) }
+    val phone = remember { mutableStateOf(profile.phoneNumber) }
+    val email = remember { mutableStateOf(profile.email) }
+
+    val isSaveEnabled = remember {
+        derivedStateOf {
+            !isUpdating &&
+                    firstName.value.isNotBlank() &&
+                    lastName.value.isNotBlank() &&
+                    phone.value.isNotBlank() &&
+                    email.value.isNotBlank() &&
+                    (firstName.value != profile.firstName ||
+                            lastName.value != profile.lastName ||
+                            phone.value != profile.phoneNumber ||
+                            email.value != profile.email)
+        }
+    }
+
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(
+                value = firstName.value, onValueChange = { firstName.value = it },
+                label = { Text("First Name") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            OutlinedTextField(
+                value = lastName.value, onValueChange = { lastName.value = it },
+                label = { Text("Last Name") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+        }
+
+        OutlinedTextField(
+            value = phone.value, onValueChange = { phone.value = it },
+            label = { Text("Phone Number") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+        )
+
+        OutlinedTextField(
+            value = email.value, onValueChange = { email.value = it },
+            label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+        )
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f).height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isUpdating
+            ) {
+                Text("Cancel")
+            }
+
+            Button(
+                onClick = { onSave(firstName.value, lastName.value, phone.value, email.value) },
+                enabled = isSaveEnabled.value,
+                modifier = Modifier.weight(1f).height(50.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (isUpdating) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                } else {
+                    Text("Save Changes", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddAddressForm(
+    viewModel: ProfileViewModel = hiltViewModel(),
+    onAddressAdded: () -> Unit
+) {
+    val city = remember { mutableStateOf("") }
+    val street = remember { mutableStateOf("") }
+    val house = remember { mutableStateOf("") }
+    val apartment = remember { mutableStateOf("") }
+
+    val profileState by viewModel.state.collectAsState()
+    val lastUpdateSuccess by rememberUpdatedState(profileState.updateSuccess)
+
+    LaunchedEffect(lastUpdateSuccess) {
+        if (lastUpdateSuccess && profileState.error == null) {
+            city.value = ""
+            street.value = ""
+            house.value = ""
+            apartment.value = ""
+
+            viewModel.resetUpdateState()
+
+            // Callback для згортання секції
+            onAddressAdded()
+        }
+    }
+
+    val isAddButtonEnabled = remember {
+        derivedStateOf {
+            city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank()
+        }
+    }
+
+    val isUpdating = profileState.isUpdating
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            "Add New Address",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = city.value, onValueChange = { city.value = it },
+                label = { Text("City") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            OutlinedTextField(
+                value = street.value, onValueChange = { street.value = it },
+                label = { Text("Street") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = house.value, onValueChange = { house.value = it },
+                label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            OutlinedTextField(
+                value = apartment.value, onValueChange = { apartment.value = it },
+                label = { Text("Apartment (optional)") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                viewModel.addAddress(
+                    city = city.value, street = street.value, house = house.value, apartment = apartment.value.ifBlank { null }
+                )
+            },
+            enabled = isAddButtonEnabled.value && !isUpdating,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            if (isUpdating) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp
+                )
+            } else {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Add Address", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun AddressList(
+    addresses: List<UserAddress>,
+    onDeleteAddress: (Int) -> Unit,
+    onEditAddress: (addressId: Int?, city: String, street: String, house: String, apartment: String?) -> Unit,
+    profileViewModel: ProfileViewModel = hiltViewModel()
+) {
+    val state by profileViewModel.state.collectAsState()
+    val isUpdating = state.isUpdating
+    val addressToEdit = remember { mutableStateOf<UserAddress?>(null) }
+
+    // --- ЛОГІКА ДЛЯ АДРЕС: Закриваємо редагування адреси після успішного збереження ---
+    LaunchedEffect(state.updateSuccess) {
+        if (state.updateSuccess && addressToEdit.value != null) {
+            addressToEdit.value = null
+            profileViewModel.resetUpdateState()
+        }
+    }
+    // ---------------------------------------------------------------------------------
+
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (addresses.isEmpty()) {
+            Text(
+                "You have no saved addresses yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        } else {
+            addresses.forEach { address ->
+                if (addressToEdit.value?.id == address.id) {
+                    EditAddressForm(
+                        address = address,
+                        onSave = { city, street, house, apartment ->
+                            onEditAddress(address.id, city, street, house, apartment)
+                            // Форма закриється автоматично через LaunchedEffect
+                        },
+                        onCancel = { addressToEdit.value = null },
+                        isUpdating = isUpdating
+                    )
+                } else {
+                    SavedAddressCard(
+                        address = address,
+                        onDeleteClick = onDeleteAddress,
+                        onEditClick = { addressToEdit.value = address },
+                        isUpdating = isUpdating
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EditAddressForm(
+    address: UserAddress,
+    onSave: (city: String, street: String, house: String, apartment: String?) -> Unit,
+    onCancel: () -> Unit,
+    isUpdating: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEA)),
+        border = BorderStroke(1.dp, Color(0xFFFFCC00))
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Edit Address", fontWeight = FontWeight.Bold)
+
+            val city = remember { mutableStateOf(address.city) }
+            val street = remember { mutableStateOf(address.street) }
+            val house = remember { mutableStateOf(address.house ?: "") }
+            val apartment = remember { mutableStateOf(address.apartments ?: "") }
+
+            OutlinedTextField(
+                value = city.value, onValueChange = { city.value = it },
+                label = { Text("City") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            OutlinedTextField(
+                value = street.value, onValueChange = { street.value = it },
+                label = { Text("Street") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = house.value, onValueChange = { house.value = it },
+                    label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+                )
+                OutlinedTextField(
+                    value = apartment.value, onValueChange = { apartment.value = it },
+                    label = { Text("Apt (optional)") }, singleLine = true, modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+                )
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    enabled = !isUpdating
+                ) {
+                    Text("Cancel")
+                }
+                Button(
+                    onClick = { onSave(city.value, street.value, house.value, apartment.value) },
+                    enabled = !isUpdating && city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank(),
+                    modifier = Modifier.weight(1f).height(40.dp)
+                ) {
+                    if (isUpdating) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White)
+                    } else {
+                        Text("Save")
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun SavedAddressCard(
+    address: UserAddress,
+    onDeleteClick: (Int) -> Unit,
+    onEditClick: () -> Unit,
+    isUpdating: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0))
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .padding(end = 90.dp)
+            ) {
+                Text(
+                    text = "${address.street}, ${address.house}${if (address.apartments.isNullOrBlank()) "" else ", apt ${address.apartments}"}",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = address.city,
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            Row(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+                IconButton(
+                    onClick = onEditClick,
+                    enabled = !isUpdating,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Редагувати адресу",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                val addressId = address.id
+                if (addressId != null) {
+                    IconButton(
+                        onClick = { onDeleteClick(addressId) },
+                        enabled = !isUpdating,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Видалити адресу",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 @Composable
 fun ExpandableSection(
     title: String,
     subtitle: String,
     isExpanded: Boolean,
     onClick: () -> Unit,
+    actionButton: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
@@ -386,6 +704,7 @@ fun ExpandableSection(
                     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
+                actionButton?.invoke()
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (isExpanded) "Згорнути" else "Розгорнути"
@@ -401,193 +720,24 @@ fun ExpandableSection(
     }
 }
 
-/**
- * Вміст для секції "My Account"
- */
-@Composable
-fun MyAccountSection(
-    firstName: MutableState<String>,
-    lastName: MutableState<String>,
-    phone: MutableState<String>,
-    email: MutableState<String>,
-    currentPassword: MutableState<String>,
-    newPassword: MutableState<String>,
-    confirmNewPassword: MutableState<String>,
-    passwordsMatch: Boolean,
-    error: String?,
-    onLogoutClick: () -> Unit
-) {
-    var passVisible by remember { mutableStateOf(false) }
-    var confirmPassVisible by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // [ЛОГІКА ПЕРЕНЕСЕНА СЮДИ]
-        // Поля завжди редаговані
-        OutlinedTextField(
-            value = firstName.value,
-            onValueChange = { firstName.value = it },
-            label = { Text("Ім'я") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = lastName.value,
-            onValueChange = { lastName.value = it },
-            label = { Text("Прізвище") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = phone.value,
-            onValueChange = { phone.value = it },
-            label = { Text("Телефон") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = email.value,
-            onValueChange = { email.value = it },
-            label = { Text("Email") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Divider(Modifier.padding(vertical = 8.dp))
-
-        // Зміна паролю
-        Text("Зміна паролю", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-
-        OutlinedTextField(
-            value = currentPassword.value,
-            onValueChange = { currentPassword.value = it },
-            label = { Text("Поточний пароль") },
-            singleLine = true,
-            visualTransformation = if (passVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { passVisible = !passVisible }) {
-                    Icon(if (passVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = newPassword.value,
-            onValueChange = { newPassword.value = it },
-            label = { Text("Новий пароль (min 8)") },
-            singleLine = true,
-            visualTransformation = if (confirmPassVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { confirmPassVisible = !confirmPassVisible }) {
-                    Icon(if (confirmPassVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = confirmNewPassword.value,
-            onValueChange = { confirmNewPassword.value = it },
-            label = { Text("Підтвердити новий пароль") },
-            singleLine = true,
-            visualTransformation = if (confirmPassVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            isError = newPassword.value.isNotBlank() && !passwordsMatch,
-            modifier = Modifier.fillMaxWidth()
-        )
-        if (newPassword.value.isNotBlank() && !passwordsMatch) {
-            Text("Паролі не співпадають", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-        if (error != null) {
-            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-
-        Divider(Modifier.padding(vertical = 8.dp))
-
-        // Кнопка "Вийти"
-        OutlinedButton(
-            onClick = onLogoutClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-        ) {
-            Text("Вийти з акаунту")
-        }
-    }
-}
-
-/**
- * Картка для підключення соціальних акаунтів
- */
-@Composable
-fun SocialAccountsCard() {
-    Text(
-        "Connect Social Accounts",
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
-    Text(
-        text = "Connect your accounts to sync with social networks and log in to the site using Facebook, Google, or Apple",
-        style = MaterialTheme.typography.bodyMedium,
-        color = Color.Gray,
-        modifier = Modifier.padding(bottom = 16.dp)
-    )
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column {
-            // TODO: Використовуйте реальні іконки
-            SocialRow(icon = R.drawable.ic_launcher_foreground, "Facebook", "Connect to social networks")
-            Divider(color = Color(0xFFF0F0F0))
-            SocialRow(icon = R.drawable.ic_launcher_foreground, "Google", "Sync contacts")
-            Divider(color = Color(0xFFF0F0F0))
-            SocialRow(icon = R.drawable.ic_launcher_foreground, "Apple", "Sync contacts")
-        }
-    }
-}
-
-@Composable
-fun SocialRow(icon: Int, title: String, subtitle: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { /* TODO */ }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(painter = painterResource(id = icon), contentDescription = title, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-        }
-    }
-}
-
-
-/**
- * Заглушка, якщо користувач не увійшов
- */
 @Composable
 fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = 64.dp), // Додаємо відступи
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            "Ви не авторизовані.",
-            style = MaterialTheme.typography.titleLarge
+            "You are not authorized",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
         )
         Text(
-            "Увійдіть, щоб керувати своїм профілем.",
+            "Sign in to manage your profile",
+            textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
         )
         Button(
@@ -596,7 +746,263 @@ fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
                 .fillMaxWidth()
                 .height(50.dp)
         ) {
-            Text("Увійти / Зареєструватися")
+            Text("Log in / Register")
         }
+    }
+}
+
+@Composable
+fun OrderHistoryList(
+    orders: List<Order>,
+    addresses: List<UserAddress>,
+    onCancelOrder: (orderId: Int) -> Unit,
+    isCancelling: Boolean
+) {
+    if (orders.isEmpty()) {
+        Text(
+            text = "You haven't placed any orders yet.",
+            modifier = Modifier.padding(16.dp),
+            color = Color.Gray
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
+            orders.sortedByDescending { it.orderDate }.forEach { order ->
+                OrderHistoryCard(
+                    order = order,
+                    addresses = addresses,
+                    onCancelOrder = onCancelOrder,
+                    isCancelling = isCancelling
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OrderHistoryCard(
+    order: Order,
+    addresses: List<UserAddress>,
+    onCancelOrder: (orderId: Int) -> Unit,
+    isCancelling: Boolean
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    fun formatHryvnia(amount: Double): String {
+        return NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }.format(amount) + " ₴"
+    }
+
+    val deliveryPrice = when (order.deliveryMethod) {
+        DeliveryMethod.Courier -> 100.0
+        DeliveryMethod.Post -> 80.0
+        DeliveryMethod.Premium -> 150.0
+        DeliveryMethod.Pickup -> 0.0
+    }
+    val deliveryLabel = when (order.deliveryMethod) {
+        DeliveryMethod.Courier -> "Courier Delivery"
+        DeliveryMethod.Post -> "Postal Service"
+        DeliveryMethod.Premium -> "Premium Delivery"
+        DeliveryMethod.Pickup -> "Store Pickup"
+    }
+
+    val totalWithShipping = order.totalAmount + deliveryPrice
+    val canCancel = order.status == OrderStatus.Created || order.status == OrderStatus.Approved
+
+    fun findAddress(addressId: Int): UserAddress? {
+        return addresses.find { it.id == addressId }
+    }
+
+    val formattedAddress = remember(order.deliveryAddressId, addresses) {
+        val address = findAddress(order.deliveryAddressId)
+        address?.let {
+            "${it.city}, ${it.street} ${it.house}${if (!it.apartments.isNullOrBlank()) ", apt ${it.apartments}" else ""}"
+        } ?: "Address information not available"
+    }
+
+    val orderStatusDisplay = when(order.status) {
+        OrderStatus.Created -> "Created"
+        OrderStatus.Approved -> "Approved"
+        OrderStatus.Collected -> "Collected"
+        OrderStatus.Delivered -> "Delivered"
+        OrderStatus.Cancelled -> "Cancelled"
+    }
+
+    val paymentStatusDisplay = when(order.paymentStatus) {
+        PaymentStatus.Paid -> "Paid"
+        PaymentStatus.Failed -> "Failed"
+        PaymentStatus.TestPaid -> "Test paid"
+        PaymentStatus.NotPaid -> "Not paid"
+    }
+
+    val orderDateFormatted = remember(order.orderDate) {
+        try {
+            val zonedDateTime = ZonedDateTime.parse(order.orderDate)
+            DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(Locale("uk", "UA")).format(zonedDateTime)
+        } catch (e: Exception) {
+            "Invalid date"
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { isExpanded = !isExpanded },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0))
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Order ID", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text("#${order.id}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Date", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text(orderDateFormatted, style = MaterialTheme.typography.bodyMedium)
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Status", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text(
+                        orderStatusDisplay,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = when(order.status) {
+                            OrderStatus.Created -> Color(0xFFF9A825)
+                            OrderStatus.Approved -> Color(0xFF1976D2)
+                            OrderStatus.Collected -> Color(0xFF388E3C)
+                            OrderStatus.Delivered -> Color(0xFF9C27B0)
+                            OrderStatus.Cancelled -> Color.Gray
+                        }
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text("Total Amount", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text(formatHryvnia(totalWithShipping), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Divider(color = Color(0xFFF0F0F0))
+
+            AnimatedVisibility(visible = isExpanded) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OrderInfoRow(Icons.Filled.Call, "Delivery Method", deliveryLabel)
+                    OrderInfoRow(Icons.Filled.Info, "Payment Method", when(order.paymentMethod) {
+                        PaymentMethod.Card -> "Card"
+                        PaymentMethod.CashAfterDelivery -> "Cash after delivery"
+                        PaymentMethod.GooglePay -> "Google Pay"
+                    })
+                    OrderInfoRow(Icons.Filled.Check, "Payment Status", paymentStatusDisplay)
+                    OrderInfoRow(Icons.Filled.ShoppingCart, "Full Address", formattedAddress)
+
+                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                    Text("Order Items", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        order.orderItems.forEach { item ->
+                            OrderItemDisplay(item = item, formatHryvnia = ::formatHryvnia)
+                        }
+                    }
+
+                    Column(modifier = Modifier.padding(top = 8.dp)) {
+                        CostBreakdownRow("Subtotal", formatHryvnia(order.totalAmount), isTotal = false)
+                        CostBreakdownRow("Shipment Cost ($deliveryLabel)", formatHryvnia(deliveryPrice), isTotal = false)
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                        CostBreakdownRow("Total", formatHryvnia(totalWithShipping), isTotal = true)
+                    }
+
+                    if (canCancel) {
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                if (!isCancelling) {
+                                    onCancelOrder(order.id)
+                                }
+                            },
+                            enabled = !isCancelling,
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            if (isCancelling) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                            } else {
+                                Icon(Icons.Default.Clear, contentDescription = "Cancel", modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Cancel Order", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OrderItemDisplay(item: OrderItem, formatHryvnia: (Double) -> String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF0F0F0), RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(item.productName, fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                "Price: ${formatHryvnia(item.price)}",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text("Qty: ${item.quantity}", fontSize = 12.sp, color = Color.Gray)
+            Text(
+                formatHryvnia(item.price * item.quantity),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun OrderInfoRow(icon: ImageVector, title: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(8.dp))
+        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Text(value, fontSize = 14.sp, color = Color.DarkGray)
+    }
+}
+
+@Composable
+fun CostBreakdownRow(label: String, amount: String, isTotal: Boolean) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(
+            label,
+            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal,
+            fontSize = if (isTotal) 16.sp else 14.sp,
+            color = if (isTotal) Color.Black else Color.Gray
+        )
+        Text(
+            amount,
+            fontWeight = if (isTotal) FontWeight.ExtraBold else FontWeight.SemiBold,
+            fontSize = if (isTotal) 16.sp else 14.sp,
+            color = Color.Black
+        )
     }
 }
