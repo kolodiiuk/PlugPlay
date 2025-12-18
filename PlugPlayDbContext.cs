@@ -32,7 +32,7 @@ public class PlugPlayDbContext : IdentityDbContext<User, IdentityRole<int>, int>
 
     public DbSet<Review> Reviews { get; set; }
 
-    public DbSet<WishList> Wishlists { get; set; }
+    public DbSet<WishList> Wishlist { get; set; }
 
     public DbSet<UserAddress> UserAddresses { get; set; }
 
