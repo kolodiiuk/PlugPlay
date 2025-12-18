@@ -8,7 +8,7 @@ using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers.Admin;
 
-// [Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin")]
 [Route("api/admin/[controller]")]
 public class OrderController : BaseController<OrderController>
 {
